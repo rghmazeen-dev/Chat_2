@@ -4,54 +4,75 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Private Chat App</title>
+  <!-- Supabase Library -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Google Fonts & FontAwesome -->
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
   <style>
     :root[data-theme="crimson"] {
-      --bg-main: #0b090a; --bg-radial: radial-gradient(circle at top right, #1a080c, #0b090a 60%);
-      --card-bg: #161a1d; --accent-color: #e63946; --accent-gradient: linear-gradient(135deg, #d90429 0%, #ef233c 50%, #800020 100%);
-      --glass-border: rgba(255, 255, 255, 0.08); --text-main: #f8fafc; --text-muted: #b1a7a6;
-      --glow-effect: 0 0 20px rgba(230, 57, 70, 0.35); --msg-me-shadow: 0 4px 15px rgba(217, 4, 41, 0.35);
+      --bg-main: #0b090a; 
+      --bg-radial: radial-gradient(circle at top right, #1a080c, #0b090a 60%);
+      --card-bg: #161a1d; 
+      --accent-color: #e63946; 
+      --accent-gradient: linear-gradient(135deg, #d90429 0%, #ef233c 50%, #800020 100%);
+      --glass-border: rgba(255, 255, 255, 0.08); 
+      --text-main: #f8fafc; 
+      --text-muted: #b1a7a6;
+      --glow-effect: 0 0 20px rgba(230, 57, 70, 0.35); 
+      --msg-me-shadow: 0 4px 15px rgba(217, 4, 41, 0.35);
     }
     :root[data-theme="neon"] {
-      --bg-main: #030712; --bg-radial: radial-gradient(circle at top right, #002b53 0%, #030712 65%);
-      --card-bg: #0b1528; --accent-color: #00f0ff; --accent-gradient: linear-gradient(135deg, #00f0ff 0%, #0072ff 50%, #002b80 100%);
-      --glass-border: rgba(0, 240, 255, 0.15); --text-main: #f0f9ff; --text-muted: #64748b;
-      --glow-effect: 0 0 25px rgba(0, 240, 255, 0.4); --msg-me-shadow: 0 4px 15px rgba(0, 114, 255, 0.4);
+      --bg-main: #030712; 
+      --bg-radial: radial-gradient(circle at top right, #002b53 0%, #030712 65%);
+      --card-bg: #0b1528; 
+      --accent-color: #00f0ff; 
+      --accent-gradient: linear-gradient(135deg, #00f0ff 0%, #0072ff 50%, #002b80 100%);
+      --glass-border: rgba(0, 240, 255, 0.15); 
+      --text-main: #f0f9ff; 
+      --text-muted: #64748b;
+      --glow-effect: 0 0 25px rgba(0, 240, 255, 0.4); 
+      --msg-me-shadow: 0 4px 15px rgba(0, 114, 255, 0.4);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', -apple-system, sans-serif; transition: 0.3s ease; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', -apple-system, sans-serif; transition: background 0.3s, border 0.3s; }
     html, body { width: 100%; height: 100vh; overflow: hidden; background-color: var(--bg-main); color: var(--text-main); }
     
     .screen { display: none; width: 100vw; height: 100vh; flex-direction: column; background: var(--bg-radial); position: relative; }
     .screen.active { display: flex; }
 
-    .back-btn-absolute { position: absolute; top: 20px; left: 20px; background: var(--card-bg); border: 1px solid var(--glass-border); color: var(--text-main); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20; display: none; }
+    .back-btn-absolute { position: absolute; top: 20px; left: 20px; background: var(--card-bg); border: 1px solid var(--glass-border); color: var(--text-main); width: 40px; height: 40px; border-radius: 50%; display: none; align-items: center; justify-content: center; cursor: pointer; z-index: 20; }
     .back-btn-absolute:hover { border-color: var(--accent-color); color: var(--accent-color); }
 
     .auth-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
-    .auth-container i { font-size: 4rem; color: var(--accent-color); margin-bottom: 20px; filter: drop-shadow(var(--glow-effect)); }
+    .auth-container i { font-size: 3.8rem; color: var(--accent-color); margin-bottom: 20px; filter: drop-shadow(var(--glow-effect)); }
     .auth-container h2 { margin-bottom: 10px; font-size: 1.8rem; }
     .auth-container p { color: var(--text-muted); margin-bottom: 20px; }
-    .auth-input-wrapper { background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 20px; padding: 10px 20px; display: flex; width: 100%; max-width: 350px; margin-bottom: 15px; }
-    .auth-input-wrapper input { flex: 1; background: transparent; border: none; color: #fff; outline: none; font-size: 1.1rem; text-align: center; }
+    
+    .auth-input-wrapper { background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 20px; padding: 10px 20px; display: flex; width: 100%; max-width: 350px; margin-bottom: 12px; }
+    .auth-input-wrapper input { flex: 1; background: transparent; border: none; color: #fff; outline: none; font-size: 1rem; text-align: center; }
+    
     .primary-btn { background: var(--accent-gradient); color: #fff; border: none; padding: 12px 30px; border-radius: 20px; font-size: 1.1rem; font-weight: 700; cursor: pointer; box-shadow: var(--msg-me-shadow); width: 100%; max-width: 350px; margin-top: 5px; }
+    .primary-btn:active { transform: scale(0.98); }
     .secondary-link { color: var(--text-muted); margin-top: 15px; cursor: pointer; font-size: 0.9rem; text-decoration: underline; }
     
     .error-msg { color: #ff4d4d; background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); padding: 10px; border-radius: 12px; font-size: 0.9rem; width: 100%; max-width: 350px; margin-bottom: 15px; display: none; text-align: center; word-break: break-word; }
 
     .header { padding: 15px 20px; border-bottom: 1px solid var(--glass-border); background-color: rgba(3, 7, 18, 0.75); backdrop-filter: blur(12px); display: flex; justify-content: space-between; align-items: center; z-index: 10; }
     .header h3 { font-size: 1.2rem; }
+    
     .search-bar { padding: 15px 20px; display: flex; gap: 10px; border-bottom: 1px solid var(--glass-border); }
     .search-bar input { flex: 1; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 15px; padding: 10px 15px; color: #fff; outline: none; }
     .search-bar button { background: var(--card-bg); border: 1px solid var(--glass-border); color: var(--accent-color); padding: 10px 15px; border-radius: 15px; cursor: pointer; font-weight: bold; }
+    
     .chat-list { flex: 1; overflow-y: auto; padding: 10px; }
     .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); opacity: 0.7; }
     .empty-state i { font-size: 3rem; margin-bottom: 15px; }
+    
     .chat-item { display: flex; align-items: center; gap: 15px; padding: 15px; background: var(--card-bg); border-radius: 15px; margin-bottom: 10px; cursor: pointer; border: 1px solid transparent; }
     .chat-item:hover { border-color: var(--accent-color); background: rgba(22, 26, 29, 0.9); }
-    .chat-item .avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; }
+    .chat-item .avatar { width: 45px; height: 45px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; color: #fff; }
 
     .chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; }
     .msg-group { display: flex; flex-direction: column; margin-bottom: 12px; max-width: 75%; }
@@ -72,6 +93,7 @@
 </head>
 <body>
 
+  <!-- شاشة المصادقة والحماية -->
   <div id="auth-screen" class="screen active">
     <div class="back-btn-absolute" id="back-btn" onclick="goBackToPasscode()">
       <i class="fa-solid fa-arrow-left"></i>
@@ -80,23 +102,39 @@
       <i class="fa-solid fa-lock" id="auth-icon"></i>
       <h2 id="auth-title">رمز الأمان</h2>
       <p id="auth-desc">أدخل رمز الأمان للوصول إلى النظام</p>
+      
       <div class="error-msg" id="error-box"></div>
-      <div class="auth-input-wrapper">
-        <input type="password" id="auth-input" placeholder="أدخل الكود هنا..." onkeypress="if(event.key==='Enter') handleAuthAction()">
+
+      <!-- مدخل رمز الأمان -->
+      <div class="auth-input-wrapper" id="wrap-passcode">
+        <input type="password" id="input-passcode" placeholder="رمز الأمان..." onkeypress="if(event.key==='Enter') handleAuthAction()">
       </div>
+
+      <!-- مدخل اسم المستخدم (للتسجيل والدخول) -->
+      <div class="auth-input-wrapper" id="wrap-username" style="display: none;">
+        <input type="text" id="input-username" placeholder="اسم المستخدم (اليوزر نيم)" onkeypress="if(event.key==='Enter') handleAuthAction()">
+      </div>
+
+      <!-- مدخل كلمة المرور (للتسجيل والدخول) -->
+      <div class="auth-input-wrapper" id="wrap-password" style="display: none;">
+        <input type="password" id="input-password" placeholder="كلمة المرور..." onkeypress="if(event.key==='Enter') handleAuthAction()">
+      </div>
+
       <button class="primary-btn" id="auth-btn" onclick="handleAuthAction()">متابعة</button>
       <span class="secondary-link" id="auth-switch-link" onclick="switchToRegister()" style="display:none;">ليس لديك حساب؟ إنشاء حساب جديد</span>
+      <span class="secondary-link" id="auth-login-link" onclick="switchToLogin()" style="display:none;">لديك حساب بالفعل؟ تسجيل الدخول</span>
     </div>
   </div>
 
+  <!-- الشاشة الرئيسية (قائمة المحادثات) -->
   <div id="home-screen" class="screen">
     <div class="header">
       <h3 id="welcome-text">المحادثات الخاصة</h3>
       <button class="theme-btn" onclick="toggleTheme()"><i class="fa-solid fa-sun" id="theme-icon"></i></button>
     </div>
     <div class="search-bar">
-      <input type="text" id="search-username" placeholder="ابحث عن صديق باليوزر نيم للبدء..." onkeypress="if(event.key==='Enter') startNewChat()">
-      <button onclick="startNewChat()"><i class="fa-solid fa-magnifying-glass"></i> بحث وبدء</button>
+      <input type="text" id="search-username" placeholder="ابحث عن صديق باليوزر نيم..." onkeypress="if(event.key==='Enter') startNewChat()">
+      <button onclick="startNewChat()"><i class="fa-solid fa-magnifying-glass"></i> بحث</button>
     </div>
     <div class="chat-list" id="chat-list">
       <div class="empty-state">
@@ -106,6 +144,7 @@
     </div>
   </div>
 
+  <!-- شاشة الدردشة -->
   <div id="chat-screen" class="screen">
     <div class="header">
       <div style="display: flex; align-items: center; gap: 15px;">
@@ -122,14 +161,15 @@
           <i class="fa-solid fa-microphone"></i>
         </div>
         <span class="send-btn" id="send-btn" onclick="sendMessage()"><i class="fa-solid fa-arrow-up"></i></span>
-        <input type="text" id="message-input" placeholder="اكتب رسالتك..." oninput="toggleSendBtn()" onkeypress="handleKeyPress(event)">
+        <input type="text" id="message-input" placeholder="اكتب رسالتك..." oninput="toggleSendBtn()" onkeypress="if(event.key==='Enter') sendMessage()">
       </div>
     </div>
   </div>
 
   <script>
+    // إعدادات الاتصال بـ Supabase (بدون أي مسافات أو إضافات خاطئة)
     const SUPABASE_URL = 'https://aafnptpedklibvvytrdv.supabase.co';
-    const SUPABASE_KEY = 'EyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZm5wdHBlZGtsaWJ2dnl0cmR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3OTk2NzQsImV4cCI6MjEwMjM3NTY3NH0.QuA-7sUFSF7z8tuQaccGI7Oo4jx8WjWoH6m1z9Ga9HQ';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZm5wdHBlZGtsaWJ2dnl0cmR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3OTk2NzQsImV4cCI6MjEwMjM3NTY3NH0.QuA-7sUFSF7z8tuQaccGI7Oo4jx8WjWoH6m1z9Ga9HQ';
     
     let _supabase = null;
     function getSupabase() {
@@ -142,10 +182,11 @@
     let currentUser = "";
     let currentChatFriend = "";
     let messageSubscription = null;
-    let authStep = 'passcode';
+    let authStep = 'passcode'; // 'passcode' | 'login' | 'register'
 
-    const homeScreen = document.getElementById('home-screen');
+    // العناصر الرسمية
     const authScreen = document.getElementById('auth-screen');
+    const homeScreen = document.getElementById('home-screen');
     const chatScreen = document.getElementById('chat-screen');
     const chatBox = document.getElementById('chat-box');
     const chatList = document.getElementById('chat-list');
@@ -153,110 +194,192 @@
     const errorBox = document.getElementById('error-box');
     const backBtn = document.getElementById('back-btn');
 
-    function showError(msg) { errorBox.innerText = msg; errorBox.style.display = 'block'; }
-    function hideError() { errorBox.innerText = ''; errorBox.style.display = 'none'; }
+    function showError(msg) { 
+      errorBox.innerText = msg; 
+      errorBox.style.display = 'block'; 
+    }
+    
+    function hideError() { 
+      errorBox.innerText = ''; 
+      errorBox.style.display = 'none'; 
+    }
 
-    async function handleAuthAction() {
+    function updateAuthUI() {
       hideError();
-      const val = document.getElementById('auth-input').value.trim();
-      if (!val) { showError("يرجى ملء الحقل المطلوب!"); return; }
+      const wrapPasscode = document.getElementById('wrap-passcode');
+      const wrapUser = document.getElementById('wrap-username');
+      const wrapPass = document.getElementById('wrap-password');
+      const switchLink = document.getElementById('auth-switch-link');
+      const loginLink = document.getElementById('auth-login-link');
+      const authTitle = document.getElementById('auth-title');
+      const authDesc = document.getElementById('auth-desc');
+      const authIcon = document.getElementById('auth-icon');
+      const authBtn = document.getElementById('auth-btn');
 
       if (authStep === 'passcode') {
-        if (val === '2411712') {
-          authStep = 'login';
-          document.getElementById('auth-icon').className = "fa-solid fa-right-to-bracket";
-          document.getElementById('auth-title').innerText = "تسجيل الدخول";
-          document.getElementById('auth-desc').innerText = "أدخل اسم المستخدم وكلمة المرور الخاصة بك";
-          document.getElementById('auth-input').type = "text";
-          document.getElementById('auth-input').value = "";
-          document.getElementById('auth-input').placeholder = "اسم المستخدم (اليوزر نيم)";
-          backBtn.style.display = "flex";
-          const container = document.querySelector('.auth-container');
-          if (!document.getElementById('auth-login-pass')) {
-            const wrap = document.createElement('div');
-            wrap.className = "auth-input-wrapper";
-            wrap.id = "login-pass-wrap";
-            wrap.innerHTML = `<input type="password" id="auth-login-pass" placeholder="كلمة المرور..." onkeypress="if(event.key==='Enter') handleAuthAction()">`;
-            container.insertBefore(wrap, document.getElementById('auth-btn'));
-          }
-          document.getElementById('auth-btn').innerText = "دخول";
-          document.getElementById('auth-switch-link').style.display = "block";
-        } else { showError("رمز الأمان غير صحيح!"); }
+        backBtn.style.display = "none";
+        wrapPasscode.style.display = "flex";
+        wrapUser.style.display = "none";
+        wrapPass.style.display = "none";
+        switchLink.style.display = "none";
+        loginLink.style.display = "none";
+        authIcon.className = "fa-solid fa-lock";
+        authTitle.innerText = "رمز الأمان";
+        authDesc.innerText = "أدخل رمز الأمان للوصول إلى النظام";
+        authBtn.innerText = "متابعة";
       } else if (authStep === 'login') {
-        const passElem = document.getElementById('auth-login-pass');
-        const passVal = passElem ? passElem.value.trim() : "";
-        if (!passVal) { showError("أدخل كلمة المرور!"); return; }
-        const client = getSupabase();
-        if (!client) { showError("تعذر الاتصال بالخادم!"); return; }
-        const { data, error } = await client.from('account_requests').select('*').eq('username', val).eq('password', passVal).maybeSingle();
-        if (error || !data) { showError("الحساب غير موجود، أو البيانات خاطئة!"); return; }
-        if (data.status !== 'approved') { showError("طلب الحساب قيد الانتظار."); return; }
-        currentUser = val;
-        document.getElementById('welcome-text').innerText = `مرحباً، ${currentUser}`;
-        authScreen.classList.remove('active');
-        homeScreen.classList.add('active');
-        loadRecentChats();
+        backBtn.style.display = "flex";
+        wrapPasscode.style.display = "none";
+        wrapUser.style.display = "flex";
+        wrapPass.style.display = "flex";
+        switchLink.style.display = "block";
+        loginLink.style.display = "none";
+        authIcon.className = "fa-solid fa-right-to-bracket";
+        authTitle.innerText = "تسجيل الدخول";
+        authDesc.innerText = "أدخل اسم المستخدم وكلمة المرور الخاصة بك";
+        authBtn.innerText = "دخول";
       } else if (authStep === 'register') {
-        const passElem = document.getElementById('auth-input-pass');
-        const pass = passElem ? passElem.value.trim() : "";
-        if (!pass) { showError("أدخل كلمة المرور!"); return; }
-        const client = getSupabase();
-        if (!client) { showError("تعذر الاتصال!"); return; }
-        const { error } = await client.from('account_requests').insert([{ username: val, password: pass, status: 'pending' }]);
-        if (error) { showError(error.message || "خطأ في التسجيل."); } else { alert("تم إرسال الطلب!"); goBackToPasscode(); }
+        backBtn.style.display = "flex";
+        wrapPasscode.style.display = "none";
+        wrapUser.style.display = "flex";
+        wrapPass.style.display = "flex";
+        switchLink.style.display = "none";
+        loginLink.style.display = "block";
+        authIcon.className = "fa-solid fa-user-plus";
+        authTitle.innerText = "إنشاء حساب جديد";
+        authDesc.innerText = "أدخل بيانات الحساب الجديد لإرسال الطلب";
+        authBtn.innerText = "إرسال طلب التسجيل";
       }
     }
 
     function switchToRegister() {
-      hideError(); authStep = 'register';
-      document.getElementById('auth-icon').className = "fa-solid fa-user-plus";
-      document.getElementById('auth-title').innerText = "إنشاء حساب جديد";
-      document.getElementById('auth-input').placeholder = "اختر يوزر نيم جديد";
-      const loginPassWrap = document.getElementById('login-pass-wrap');
-      if (loginPassWrap) loginPassWrap.remove();
-      const container = document.querySelector('.auth-container');
-      const wrap = document.createElement('div');
-      wrap.className = "auth-input-wrapper";
-      wrap.id = "pass-wrap";
-      wrap.innerHTML = `<input type="password" id="auth-input-pass" placeholder="كلمة المرور..." onkeypress="if(event.key==='Enter') handleAuthAction()">`;
-      container.insertBefore(wrap, document.getElementById('auth-btn'));
-      document.getElementById('auth-btn').innerText = "إرسال طلب التسجيل";
-      document.getElementById('auth-switch-link').style.display = "none";
+      authStep = 'register';
+      updateAuthUI();
+    }
+
+    function switchToLogin() {
+      authStep = 'login';
+      updateAuthUI();
     }
 
     function goBackToPasscode() {
-      hideError(); authStep = 'passcode'; backBtn.style.display = "none";
-      document.getElementById('auth-icon').className = "fa-solid fa-lock";
-      document.getElementById('auth-title').innerText = "رمز الأمان";
-      document.getElementById('auth-input').type = "password";
-      document.getElementById('auth-input').value = "";
-      const loginPassWrap = document.getElementById('login-pass-wrap');
-      if (loginPassWrap) loginPassWrap.remove();
-      const passWrap = document.getElementById('pass-wrap');
-      if (passWrap) passWrap.remove();
-      document.getElementById('auth-btn').innerText = "متابعة";
+      authStep = 'passcode';
+      document.getElementById('input-passcode').value = '';
+      updateAuthUI();
+    }
+
+    async function handleAuthAction() {
+      hideError();
+      const client = getSupabase();
+      if (!client) {
+        showError("تعذر الاتصال بـ Supabase! تحقّق من الاتصال بالمواقف/الشبكة.");
+        return;
+      }
+
+      if (authStep === 'passcode') {
+        const passVal = document.getElementById('input-passcode').value.trim();
+        if (passVal === '2411712') {
+          switchToLogin();
+        } else {
+          showError("رمز الأمان غير صحيح!");
+        }
+      } else if (authStep === 'login') {
+        const userVal = document.getElementById('input-username').value.trim();
+        const passVal = document.getElementById('input-password').value.trim();
+
+        if (!userVal || !passVal) {
+          showError("يرجى ملء كافة الحقول!");
+          return;
+        }
+
+        const { data, error } = await client
+          .from('account_requests')
+          .select('*')
+          .eq('username', userVal)
+          .eq('password', passVal)
+          .maybeSingle();
+
+        if (error) {
+          showError("حدث خطأ أثناء التحقق: " + error.message);
+          return;
+        }
+
+        if (!data) {
+          showError("اسم المستخدم أو كلمة المرور غير صحيحة!");
+          return;
+        }
+
+        if (data.status !== 'approved') {
+          showError("طلب الحساب الخاص بك ما زال قيد الانتظار لم يتم قبوله بعد.");
+          return;
+        }
+
+        currentUser = userVal;
+        document.getElementById('welcome-text').innerText = `مرحباً، ${currentUser}`;
+        authScreen.classList.remove('active');
+        homeScreen.classList.add('active');
+        loadRecentChats();
+
+      } else if (authStep === 'register') {
+        const userVal = document.getElementById('input-username').value.trim();
+        const passVal = document.getElementById('input-password').value.trim();
+
+        if (!userVal || !passVal) {
+          showError("يرجى ملء كافة الحقول!");
+          return;
+        }
+
+        const { error } = await client
+          .from('account_requests')
+          .insert([{ username: userVal, password: passVal, status: 'pending' }]);
+
+        if (error) {
+          showError(error.message || "حدث خطأ أثناء إرسال طلب التسجيل.");
+        } else {
+          alert("تم إرسال طلب التسجيل بنجاح! انتظر الموافقة ثم سجل الدخول.");
+          switchToLogin();
+        }
+      }
     }
 
     function goHome() {
-      chatScreen.classList.remove('active'); homeScreen.classList.add('active');
+      chatScreen.classList.remove('active');
+      homeScreen.classList.add('active');
       currentChatFriend = "";
-      if (messageSubscription) getSupabase().removeChannel(messageSubscription);
+      if (messageSubscription && getSupabase()) {
+        getSupabase().removeChannel(messageSubscription);
+      }
       loadRecentChats();
     }
 
     async function loadRecentChats() {
       if (!currentUser) return;
       const client = getSupabase();
-      const { data } = await client.from('private_messages').select('*').or(`sender.eq.${currentUser},receiver.eq.${currentUser}`).order('created_at', { ascending: false });
-      if (!data || data.length === 0) return;
+      if (!client) return;
+
+      const { data, error } = await client
+        .from('private_messages')
+        .select('*')
+        .or(`sender.eq.${currentUser},receiver.eq.${currentUser}`)
+        .order('created_at', { ascending: false });
+
+      if (error || !data || data.length === 0) return;
+
       let friends = new Set();
-      data.forEach(msg => { if (msg.sender !== currentUser) friends.add(msg.sender); if (msg.receiver !== currentUser) friends.add(msg.receiver); });
+      data.forEach(msg => {
+        if (msg.sender !== currentUser) friends.add(msg.sender);
+        if (msg.receiver !== currentUser) friends.add(msg.receiver);
+      });
+
       chatList.innerHTML = '';
       friends.forEach(friend => {
         const div = document.createElement('div');
         div.className = 'chat-item';
         div.onclick = () => openChat(friend);
-        div.innerHTML = `<div class="avatar">${friend.charAt(0).toUpperCase()}</div><div><h4>${friend}</h4></div>`;
+        div.innerHTML = `
+          <div class="avatar">${friend.charAt(0).toUpperCase()}</div>
+          <div><h4>${friend}</h4></div>
+        `;
         chatList.appendChild(div);
       });
     }
@@ -270,21 +393,49 @@
     async function openChat(friendName) {
       currentChatFriend = friendName;
       document.getElementById('chat-with-name').innerText = currentChatFriend;
-      homeScreen.classList.remove('active'); chatScreen.classList.add('active');
+      homeScreen.classList.remove('active');
+      chatScreen.classList.add('active');
       chatBox.innerHTML = '';
+
       const client = getSupabase();
-      const { data } = await client.from('private_messages').select('*').or(`and(sender.eq.${currentUser},receiver.eq.${currentChatFriend}),and(sender.eq.${currentChatFriend},receiver.eq.${currentUser})`).order('created_at', { ascending: true });
+      if (!client) return;
+
+      // جلب المحادثات السابقة
+      const { data } = await client
+        .from('private_messages')
+        .select('*')
+        .or(`and(sender.eq.${currentUser},receiver.eq.${currentChatFriend}),and(sender.eq.${currentChatFriend},receiver.eq.${currentUser})`)
+        .order('created_at', { ascending: true });
+
       if (data) data.forEach(addMessageToScreen);
-      messageSubscription = client.channel('private_chat').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'private_messages' }, payload => {
-        if ((payload.new.sender === currentUser && payload.new.receiver === currentChatFriend) || (payload.new.sender === currentChatFriend && payload.new.receiver === currentUser)) addMessageToScreen(payload.new);
-      }).subscribe();
+
+      // الاستماع للرسائل الجديدة فوراً (Realtime)
+      messageSubscription = client.channel(`private_chat_${currentUser}_${currentChatFriend}`)
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'private_messages' 
+        }, payload => {
+          const m = payload.new;
+          if ((m.sender === currentUser && m.receiver === currentChatFriend) || 
+              (m.sender === currentChatFriend && m.receiver === currentUser)) {
+            addMessageToScreen(m);
+          }
+        })
+        .subscribe();
     }
 
     function addMessageToScreen(msg) {
       const isMe = msg.sender === currentUser;
       const group = document.createElement('div');
       group.className = `msg-group ${isMe ? 'me' : 'other'}`;
-      group.innerHTML = `<div class="bubble">${msg.content}</div><span class="msg-time">${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`;
+      
+      const timeStr = new Date
+      (msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      group.innerHTML = `
+        <div class="bubble">${msg.content}</div>
+        <span class="msg-time">${timeStr}</span>
+      `;
       chatBox.appendChild(group);
       chatBox.scrollTop = chatBox.scrollHeight;
     }
@@ -292,18 +443,28 @@
     async function sendMessage() {
       const text = msgInput.value.trim();
       if (!text || !currentChatFriend) return;
-      msgInput.value = ''; toggleSendBtn();
-      await getSupabase().from('private_messages').insert([{ sender: currentUser, receiver: currentChatFriend, content: text }]);
+      msgInput.value = '';
+      toggleSendBtn();
+
+      const client = getSupabase();
+      if (!client) return;
+
+      await client.from('private_messages').insert([
+        { sender: currentUser, receiver: currentChatFriend, content: text }
+      ]);
     }
 
     function toggleSendBtn() {
       const sendBtn = document.getElementById('send-btn');
       const icons = document.getElementById('input-icons');
-      if (msgInput.value.trim().length > 0) { sendBtn.style.display = 'block'; icons.style.display = 'none'; }
-      else { sendBtn.style.display = 'none'; icons.style.display = 'flex'; }
+      if (msgInput.value.trim().length > 0) {
+        sendBtn.style.display = 'block';
+        icons.style.display = 'none';
+      } else {
+        sendBtn.style.display = 'none';
+        icons.style.display = 'flex';
+      }
     }
-
-    function handleKeyPress(e) { if (e.key === 'Enter') sendMessage(); }
 
     function toggleTheme() {
       const newTheme = document.documentElement.getAttribute('data-theme') === 'crimson' ? 'neon' : 'crimson';
