@@ -39,7 +39,7 @@
     .primary-btn { background: var(--accent-gradient); color: #fff; border: none; padding: 12px 30px; border-radius: 20px; font-size: 1.1rem; font-weight: 700; cursor: pointer; box-shadow: var(--msg-me-shadow); width: 100%; max-width: 350px; margin-top: 5px; }
     .secondary-link { color: var(--text-muted); margin-top: 15px; cursor: pointer; font-size: 0.9rem; text-decoration: underline; }
     
-    .error-msg { color: #ff4d4d; background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); padding: 10px; border-radius: 12px; font-size: 0.9rem; width: 100%; max-width: 350px; margin-bottom: 15px; display: none; text-align: center; }
+    .error-msg { color: #ff4d4d; background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); padding: 10px; border-radius: 12px; font-size: 0.9rem; width: 100%; max-width: 350px; margin-bottom: 15px; display: none; text-align: center; word-break: break-word; }
 
     .header { padding: 15px 20px; border-bottom: 1px solid var(--glass-border); background-color: rgba(3, 7, 18, 0.75); backdrop-filter: blur(12px); display: flex; justify-content: space-between; align-items: center; z-index: 10; }
     .header h3 { font-size: 1.2rem; }
@@ -245,7 +245,8 @@
         ]);
 
         if (error) {
-          showError("حدث خطأ أثناء إرسال الطلب.");
+          console.error("Supabase Error:", error);
+          showError(error.message || "حدث خطأ أثناء إرسال الطلب.");
         } else {
           alert("تم إرسال طلب إنشاء الحساب بنجاح! انتظر موافقة المسؤول.");
           goBackToPasscode();
@@ -379,48 +380,4 @@
 
     function addMessageToScreen(msg) {
       const isMe = msg.sender === currentUser;
-      const group = document.createElement('div');
-      group.className = `msg-group ${isMe ? 'me' : 'other'}`;
-            const timeStr = new Date(msg.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
-      group.innerHTML = `<div class="bubble">${msg.content}<span class="msg-time">${timeStr}</span></div>`;
-      chatBox.appendChild(group);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    async function sendMessage() {
-      const content = msgInput.value.trim();
-      if (!content || !currentChatFriend) return;
-      msgInput.value = '';
-      toggleSendBtn();
-      
-      const client = getSupabase();
-      if (client) {
-        await client.from('private_messages').insert([{ sender: currentUser, receiver: currentChatFriend, content: content }]);
-      }
-    }
-
-    function toggleSendBtn() {
-      const inputIcons = document.getElementById('input-icons');
-      const sendBtn = document.getElementById('send-btn');
-      if (msgInput.value.trim().length > 0) {
-        inputIcons.style.display = 'none'; sendBtn.style.display = 'block';
-      } else {
-        inputIcons.style.display = 'flex'; sendBtn.style.display = 'none';
-      }
-    }
-
-    function handleKeyPress(event) { if (event.key === 'Enter') sendMessage(); }
-
-    function toggleTheme() {
-      const html = document.documentElement;
-      const icon = document.getElementById('theme-icon');
-      if (html.getAttribute('data-theme') === 'crimson') {
-        html.setAttribute('data-theme', 'neon'); icon.className = 'fa-solid fa-moon';
-      } else {
-        html.setAttribute('data-theme', 'crimson'); icon.className = 'fa-solid fa-sun';
-      }
-    }
-  </script>
-</body>
-</html>
-
+      const group = document.createElement
