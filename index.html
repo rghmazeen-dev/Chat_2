@@ -86,7 +86,7 @@
       <div class="error-msg" id="error-box"></div>
 
       <div class="auth-input-wrapper">
-        <input type="password" id="auth-input" placeholder="أدخل الكود هنا...">
+        <input type="password" id="auth-input" placeholder="أدخل الكود هنا..." onkeypress="if(event.key==='Enter') handleAuthAction()">
       </div>
       
       <button class="primary-btn" id="auth-btn" onclick="handleAuthAction()">متابعة</button>
@@ -101,7 +101,7 @@
       <button class="theme-btn" onclick="toggleTheme()"><i class="fa-solid fa-sun" id="theme-icon"></i></button>
     </div>
     <div class="search-bar">
-      <input type="text" id="search-username" placeholder="ابحث عن صديق باليوزر نيم للبدء...">
+      <input type="text" id="search-username" placeholder="ابحث عن صديق باليوزر نيم للبدء..." onkeypress="if(event.key==='Enter') startNewChat()">
       <button onclick="startNewChat()"><i class="fa-solid fa-magnifying-glass"></i> بحث وبدء</button>
     </div>
     <div class="chat-list" id="chat-list">
@@ -192,7 +192,7 @@
             const wrap = document.createElement('div');
             wrap.className = "auth-input-wrapper";
             wrap.id = "login-pass-wrap";
-            wrap.innerHTML = `<input type="password" id="auth-login-pass" placeholder="كلمة المرور...">`;
+            wrap.innerHTML = `<input type="password" id="auth-login-pass" placeholder="كلمة المرور..." onkeypress="if(event.key==='Enter') handleAuthAction()">`;
             container.insertBefore(wrap, document.getElementById('auth-btn'));
           }
 
@@ -270,7 +270,7 @@
         const wrap = document.createElement('div');
         wrap.className = "auth-input-wrapper";
         wrap.id = "pass-wrap";
-        wrap.innerHTML = `<input type="password" id="auth-input-pass" placeholder="كلمة المرور للحساب...">`;
+        wrap.innerHTML = `<input type="password" id="auth-input-pass" placeholder="كلمة المرور للحساب..." onkeypress="if(event.key==='Enter') handleAuthAction()">`;
         container.insertBefore(wrap, document.getElementById('auth-btn'));
       }
       document.getElementById('auth-btn').innerText = "إرسال طلب التسجيل";
@@ -381,6 +381,4 @@
       const isMe = msg.sender === currentUser;
       const group = document.createElement('div');
       group.className = `msg-group ${isMe ? 'me' : 'other'}`;
-      const timeStr = new Date(msg.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
-      group.innerHTML = `<div class="bubble">${msg.content}<span class="msg-time">${timeStr}</span></div>`;
-      chatBox.app
+      const timeStr =
