@@ -27,14 +27,20 @@
     .screen { display: none; width: 100vw; height: 100vh; flex-direction: column; background: var(--bg-radial); position: relative; }
     .screen.active { display: flex; }
 
+    /* زرار الباك الجديد */
+    .back-btn-absolute { position: absolute; top: 20px; left: 20px; background: var(--card-bg); border: 1px solid var(--glass-border); color: var(--text-main); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20; display: none; }
+    .back-btn-absolute:hover { border-color: var(--accent-color); color: var(--accent-color); }
+
     .auth-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
     .auth-container i { font-size: 4rem; color: var(--accent-color); margin-bottom: 20px; filter: drop-shadow(var(--glow-effect)); }
     .auth-container h2 { margin-bottom: 10px; font-size: 1.8rem; }
-    .auth-container p { color: var(--text-muted); margin-bottom: 30px; }
+    .auth-container p { color: var(--text-muted); margin-bottom: 20px; }
     .auth-input-wrapper { background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 20px; padding: 10px 20px; display: flex; width: 100%; max-width: 350px; margin-bottom: 15px; }
     .auth-input-wrapper input { flex: 1; background: transparent; border: none; color: #fff; outline: none; font-size: 1.1rem; text-align: center; }
-    .primary-btn { background: var(--accent-gradient); color: #fff; border: none; padding: 12px 30px; border-radius: 20px; font-size: 1.1rem; font-weight: 700; cursor: pointer; box-shadow: var(--msg-me-shadow); width: 100%; max-width: 350px; margin-top: 10px; }
+    .primary-btn { background: var(--accent-gradient); color: #fff; border: none; padding: 12px 30px; border-radius: 20px; font-size: 1.1rem; font-weight: 700; cursor: pointer; box-shadow: var(--msg-me-shadow); width: 100%; max-width: 350px; margin-top: 5px; }
     .secondary-link { color: var(--text-muted); margin-top: 15px; cursor: pointer; font-size: 0.9rem; text-decoration: underline; }
+    
+    .error-msg { color: #ff4d4d; background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); padding: 10px; border-radius: 12px; font-size: 0.9rem; width: 100%; max-width: 350px; margin-bottom: 15px; display: none; text-align: center; }
 
     .header { padding: 15px 20px; border-bottom: 1px solid var(--glass-border); background-color: rgba(3, 7, 18, 0.75); backdrop-filter: blur(12px); display: flex; justify-content: space-between; align-items: center; z-index: 10; }
     .header h3 { font-size: 1.2rem; }
@@ -67,13 +73,20 @@
 </head>
 <body>
 
-  <!-- Screen 1: Passcode Screen (First thing to appear) -->
+  <!-- Screen 1: Passcode & Auth Screen -->
   <div id="auth-screen" class="screen active">
+    <!-- Back Button -->
+    <div class="back-btn-absolute" id="back-btn" onclick="goBackToPasscode()">
+      <i class="fa-solid fa-arrow-left"></i>
+    </div>
+
     <div class="auth-container">
       <i class="fa-solid fa-lock" id="auth-icon"></i>
       <h2 id="auth-title">رمز الأمان</h2>
       <p id="auth-desc">أدخل رمز الأمان للوصول إلى النظام</p>
       
+      <div class="error-msg" id="error-box"></div>
+
       <div class="auth-input-wrapper">
         <input type="password" id="auth-input" placeholder="أدخل الكود هنا...">
       </div>
@@ -83,7 +96,7 @@
     </div>
   </div>
 
-  <!-- Screen 2: Home Screen (Chat List & Search) -->
+  <!-- Screen 2: Home Screen -->
   <div id="home-screen" class="screen">
     <div class="header">
       <h3 id="welcome-text">المحادثات الخاصة</h3>
@@ -131,7 +144,7 @@
     let currentUser = "";
     let currentChatFriend = "";
     let messageSubscription = null;
-    let authStep = 'passcode'; // 'passcode' -> 'login' -> 'register'
+    let authStep = 'passcode';
 
     const homeScreen = document.getElementById('home-screen');
     const authScreen = document.getElementById('auth-screen');
@@ -139,10 +152,23 @@
     const chatBox = document.getElementById('chat-box');
     const chatList = document.getElementById('chat-list');
     const msgInput = document.getElementById('message-input');
+    const errorBox = document.getElementById('error-box');
+    const backBtn = document.getElementById('back-btn');
+
+    function showError(msg) {
+      errorBox.innerText = msg;
+      errorBox.style.display = 'block';
+    }
+
+    function hideError() {
+      errorBox.innerText = '';
+      errorBox.style.display = 'none';
+    }
 
     async function handleAuthAction() {
+      hideError();
       const val = document.getElementById('auth-input').value.trim();
-      if (!val) { alert("يرجى ملء الحقل!"); return; }
+      if (!val) { showError("يرجى ملء الحقل المطلوب!"); return; }
 
       if (authStep === 'passcode') {
         if (val === '2411712') {
@@ -154,7 +180,8 @@
           document.getElementById('auth-input').value = "";
           document.getElementById('auth-input').placeholder = "اسم المستخدم (اليوزر نيم)";
           
-          // Add password field for login check
+          backBtn.style.display = "flex"; // إظهار زر الـ باك
+
           const container = document.querySelector('.auth-container');
           if (!document.getElementById('auth-login-pass')) {
             const wrap = document.createElement('div');
@@ -167,13 +194,12 @@
           document.getElementById('auth-btn').innerText = "دخول";
           document.getElementById('auth-switch-link').style.display = "block";
         } else {
-          alert("رمز الأمان غير صحيح!");
+          showError("رمز الأمان غير صحيح!");
         }
       } else if (authStep === 'login') {
         const passVal = document.getElementById('auth-login-pass').value.trim();
-        if (!passVal) { alert("أدخل كلمة المرور!"); return; }
+        if (!passVal) { showError("أدخل كلمة المرور!"); return; }
 
-        // Check if account is approved in account_requests table
         const { data, error } = await _supabase
           .from('account_requests')
           .select('*')
@@ -182,12 +208,12 @@
           .single();
 
         if (error || !data) {
-          alert("الحساب غير موجود، أو لم تتم الموافقة عليه بعد من المسؤول، أو بيانات الدخول خاطئة!");
+          showError("الحساب غير موجود، أو لم تتم الموافقة عليه، أو البيانات خاطئة!");
           return;
         }
 
         if (data.status !== 'approved') {
-          alert("طلب الحساب الخاص بك قيد الانتظار ولم يتم الموافقة عليه بعد.");
+          showError("طلب الحساب الخاص بك قيد الانتظار ولم يتم الموافقة عليه بعد.");
           return;
         }
 
@@ -199,22 +225,23 @@
 
       } else if (authStep === 'register') {
         const pass = document.getElementById('auth-input-pass').value.trim();
-        if (!pass) { alert("أدخل كلمة المرور للحساب الجديد"); return; }
+        if (!pass) { showError("أدخل كلمة المرور للحساب الجديد"); return; }
         
         const { error } = await _supabase.from('account_requests').insert([
           { username: val, password: pass, status: 'pending' }
         ]);
 
         if (error) {
-          alert("حدث خطأ أثناء إرسال الطلب.");
+          showError("حدث خطأ أثناء إرسال الطلب (تأكد من إنشاء جدول account_requests).");
         } else {
-          alert("تم إرسال طلب إنشاء الحساب بنجاح! انتظر موافقة المسؤول لتتمكن من الدخول لاحقاً.");
-          location.reload();
+          alert("تم إرسال طلب إنشاء الحساب بنجاح! انتظر موافقة المسؤول.");
+          goBackToPasscode();
         }
       }
     }
 
     function switchToRegister() {
+      hideError();
       authStep = 'register';
       document.getElementById('auth-icon').className = "fa-solid fa-user-plus";
       document.getElementById('auth-title').innerText = "إنشاء حساب جديد";
@@ -234,6 +261,26 @@
         container.insertBefore(wrap, document.getElementById('auth-btn'));
       }
       document.getElementById('auth-btn').innerText = "إرسال طلب التسجيل";
+      document.getElementById('auth-switch-link').style.display = "none";
+    }
+
+    function goBackToPasscode() {
+      hideError();
+      authStep = 'passcode';
+      backBtn.style.display = "none";
+      document.getElementById('auth-icon').className = "fa-solid fa-lock";
+      document.getElementById('auth-title').innerText = "رمز الأمان";
+      document.getElementById('auth-desc').innerText = "أدخل رمز الأمان للوصول إلى النظام";
+      document.getElementById('auth-input').type = "password";
+      document.getElementById('auth-input').value = "";
+      document.getElementById('auth-input').placeholder = "أدخل الكود هنا...";
+
+      const loginPassWrap = document.getElementById('login-pass-wrap');
+      if (loginPassWrap) loginPassWrap.remove();
+      const passWrap = document.getElementById('pass-wrap');
+      if (passWrap) passWrap.remove();
+
+      document.getElementById('auth-btn').innerText = "متابعة";
       document.getElementById('auth-switch-link').style.display = "none";
     }
 
@@ -330,25 +377,4 @@
 
     function toggleSendBtn() {
       const inputIcons = document.getElementById('input-icons');
-      const sendBtn = document.getElementById('send-btn');
-      if (msgInput.value.trim().length > 0) {
-        inputIcons.style.display = 'none'; sendBtn.style.display = 'block';
-      } else {
-        inputIcons.style.display = 'flex'; sendBtn.style.display = 'none';
-      }
-    }
-
-    function handleKeyPress(event) { if (event.key === 'Enter') sendMessage(); }
-
-    function toggleTheme() {
-      const html = document.documentElement;
-      const icon = document.getElementById('theme-icon');
-      if (html.getAttribute('data-theme') === 'crimson') {
-        html.setAttribute('data-theme', 'neon'); icon.className = 'fa-solid fa-moon';
-      } else {
-        html.setAttribute('data-theme', 'crimson'); icon.className = 'fa-solid fa-sun';
-      }
-    }
-  </script>
-</body>
-</html>
+      const sendBtn = document.ge
