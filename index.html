@@ -1,0 +1,206 @@
+<<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="crimson-obsidian">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تطبيق المحادثات</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root[data-theme="crimson-obsidian"] {
+      --bg-main: #0c080e;
+      --bg-item-hover: rgba(255, 42, 95, 0.08);
+      --bg-active: rgba(255, 42, 95, 0.15);
+      --accent-primary: #ff2a5f;
+      --accent-secondary: #ff4d4d;
+      --accent-glow: rgba(255, 42, 95, 0.4);
+      --border-line: rgba(255, 255, 255, 0.06);
+      --text-main: #ffffff;
+      --text-muted: #8e8796;
+      --toggle-bg: #2a161b;
+      --toggle-ball: #ff2a5f;
+    }
+    :root[data-theme="neon-cyberpunk"] {
+      --bg-main: #06040d;
+      --bg-item-hover: rgba(0, 243, 255, 0.08);
+      --bg-active: rgba(0, 243, 255, 0.15);
+      --accent-primary: #00f3ff;
+      --accent-secondary: #b5179e;
+      --accent-glow: rgba(0, 243, 255, 0.4);
+      --border-line: rgba(255, 255, 255, 0.08);
+      --text-main: #ffffff;
+      --text-muted: #8a85ad;
+      --toggle-bg: #1f1a42;
+      --toggle-ball: #00f3ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; transition: all 0.2s ease; font-family: 'Cairo', sans-serif; }
+    html, body { width: 100%; height: 100%; background-color: var(--bg-main); color: var(--text-main); overflow-x: hidden; }
+    .page { width: 100%; min-height: 100vh; display: flex; flex-direction: column; }
+    .hidden { display: none !important; }
+    .app-header { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-line); background: rgba(0, 0, 0, 0.3); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); }
+    .header-title { font-size: 1.4rem; font-weight: 700; background: linear-gradient(45deg, var(--accent-primary), var(--accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .theme-toggle-box { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .switch-btn { width: 50px; height: 26px; background: var(--toggle-bg); border: 1px solid var(--border-line); border-radius: 20px; position: relative; padding: 2px; }
+    .switch-ball { width: 20px; height: 20px; background: var(--toggle-ball); border-radius: 50%; transition: transform 0.3s; }
+    [data-theme="crimson-obsidian"] .switch-ball { transform: translateX(-24px); }
+    .center-container { flex: 1; display: flex; justify-content: center; align-items: center; padding: 20px; }
+    .box-card { width: 100%; max-width: 400px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-line); border-radius: 20px; padding: 28px 20px; box-shadow: 0 0 25px var(--accent-glow); }
+    .box-header { text-align: center; margin-bottom: 24px; }
+    .box-header h2 { font-size: 1.6rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
+    .box-header p { color: var(--text-muted); font-size: 0.85rem; }
+    .input-group { margin-bottom: 16px; }
+    .input-group label { display: block; font-size: 0.8rem; margin-bottom: 6px; color: var(--text-muted); }
+    .input-wrapper { position: relative; }
+    .input-wrapper i { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+    .input-wrapper input { width: 100%; padding: 12px 42px 12px 14px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border-line); border-radius: 12px; color: var(--text-main); font-size: 0.9rem; outline: none; }
+    .input-wrapper input:focus { border-color: var(--accent-primary); box-shadow: 0 0 10px var(--accent-glow); }
+    .btn-submit { width: 100%; padding: 12px; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); border: none; border-radius: 12px; color: #fff; font-weight: 700; font-size: 0.95rem; cursor: pointer; margin-top: 8px; box-shadow: 0 0 12px var(--accent-glow); }
+    .form-switch-text { text-align: center; margin-top: 18px; font-size: 0.85rem; color: var(--text-muted); }
+    .form-switch-btn { color: var(--accent-primary); font-weight: 700; cursor: pointer; text-decoration: underline; margin-right: 5px; }
+    .alert-box { padding: 10px; border-radius: 8px; font-size: 0.8rem; text-align: center; margin-top: 10px; display: none; }
+    .alert-error { background: rgba(255, 77, 77, 0.15); border: 1px solid #ff4d4d; color: #ff4d4d; }
+    .alert-warning { background: rgba(255, 193, 7, 0.15); border: 1px solid #ffc107; color: #ffc107; }
+    .alert-success { background: rgba(40, 167, 69, 0.15); border: 1px solid #28a745; color: #28a745; }
+    .chat-scroll-wrapper { flex: 1; overflow-y: auto; direction: ltr; width: 100%; max-width: 800px; margin: 0 auto; }
+    .chat-list-content { direction: rtl; }
+    .chat-item { display: flex; align-items: center; padding: 14px 20px; cursor: pointer; border-bottom: 1px solid var(--border-line); }
+    .avatar-img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-left: 14px; }
+  </style>
+</head>
+<body>
+
+  <!-- البوابة 1 -->
+  <div class="page" id="passGatePage">
+    <header class="app-header">
+      <div class="header-title">أهلاً بك</div>
+      <div class="theme-toggle-box"><span class="themeText">Crimson Obsidian</span><div class="switch-btn"><div class="switch-ball"></div></div></div>
+    </header>
+    <div class="center-container">
+      <div class="box-card">
+        <div class="box-header"><h2>أدخل رمز الدخول 🔒</h2><p>اكتب الرمز لفتح التطبيق</p></div>
+        <form id="passGateForm">
+          <div class="input-group"><div class="input-wrapper"><i class="fa-solid fa-key"></i><input type="password" id="gatePassInput" placeholder="أدخل رمز الدخول..." required></div></div>
+          <button type="submit" class="btn-submit">تأكيد الرمز ✨</button>
+          <div class="alert-box alert-error" id="gateError">الرمز غير صحيح!</div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- البوابة 2 (اللوجن والتسجيل) -->
+  <div class="page hidden" id="authPage">
+    <header class="app-header">
+      <div class="header-title">تسجيل الدخول</div>
+      <div class="theme-toggle-box"><span class="themeText">Crimson Obsidian</span><div class="switch-btn"><div class="switch-ball"></div></div></div>
+    </header>
+    <div class="center-container">
+      <div class="box-card">
+        <form id="loginForm">
+          <div class="box-header"><h2>تسجيل الدخول</h2><p>أدخل اسم المستخدم وكلمة السر</p></div>
+          <div class="input-group"><label>اسم المستخدم</label><div class="input-wrapper"><i class="fa-solid fa-user"></i><input type="text" id="loginUsername" required></div></div>
+          <div class="input-group"><label>كلمة السر</label><div class="input-wrapper"><i class="fa-solid fa-lock"></i><input type="password" id="loginPassword" required></div></div>
+          <button type="submit" class="btn-submit">دخول 🚀</button>
+          <div class="alert-box alert-error" id="loginError">اسم المستخدم أو كلمة السر غلط!</div>
+          <div class="alert-box alert-warning" id="loginPendingAlert">⏳ حسابك قيد المراجعة! في انتظار قبول الأدمن.</div>
+          <div class="form-switch-text">معندكش حساب؟ <span class="form-switch-btn" id="toSignupBtn">طلب إنشاء حساب</span></div>
+        </form>
+
+        <form id="signupForm" class="hidden">
+          <div class="box-header"><h2>طلب إنشاء حساب 📝</h2><p>سوف يتم إرسال الطلب للأدمن للموافقة</p></div>
+          <div class="input-group"><label>الاسم بالكامل</label><div class="input-wrapper"><i class="fa-solid fa-id-card"></i><input type="text" id="signupName" required></div></div>
+          <div class="input-group"><label>اسم المستخدم</label><div class="input-wrapper"><i class="fa-solid fa-user"></i><input type="text" id="signupUsername" required></div></div>
+          <div class="input-group"><label>كلمة السر</label><div class="input-wrapper"><i class="fa-solid fa-lock"></i><input type="password" id="signupPassword" required></div></div>
+          <button type="submit" class="btn-submit">إرسال طلب التفعيل 📩</button>
+          <div class="alert-box alert-success" id="signupSuccess">تم إرسال طلبك! في انتظار قبول الأدمن.</div>
+          <div class="alert-box alert-error" id="signupExists">اسم المستخدم موجود بالفعل!</div>
+          <div class="form-switch-text">عندك حساب بالفعل؟ <span class="form-switch-btn" id="toLoginBtn">تسجيل الدخول</span></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- الشات -->
+  <div class="page hidden" id="chatListPage">
+    <header class="app-header">
+      <div class="header-title">المحادثات</div>
+      <div class="theme-toggle-box"><span class="themeText">Crimson Obsidian</span><div class="switch-btn"><div class="switch-ball"></div></div></div>
+    </header>
+    <div class="chat-scroll-wrapper">
+      <div class="chat-list-content">
+        <div class="chat-item">
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" class="avatar-img" alt="سارة">
+          <div style="flex:1;"><strong id="activeUserWelcome">مرحباً بك!</strong><p style="font-size:0.85rem; color:var(--text-muted)">أهلاً بك في المحادثات المباشرة 🔥</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // الثيمات
+    const toggleBoxes = document.querySelectorAll('.theme-toggle-box');
+    toggleBoxes.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const html = document.documentElement;
+        const isDark = html.getAttribute('data-theme') === 'crimson-obsidian';
+        html.setAttribute('data-theme', isDark ? 'neon-cyberpunk' : 'crimson-obsidian');
+      });
+    });
+
+    // البوابة 2411712
+    document.getElementById('passGateForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (document.getElementById('gatePassInput').value === "2411712") {
+        document.getElementById('passGatePage').classList.add('hidden');
+        document.getElementById('authPage').classList.remove('hidden');
+      } else {
+        document.getElementById('gateError').style.display = 'block';
+      }
+    });
+
+    // إدارة الحسابات
+    const getUsers = () => JSON.parse(localStorage.getItem('app_users') || '[]');
+    const saveUsers = (u) => localStorage.setItem('app_users', JSON.stringify(u));
+
+    document.getElementById('toSignupBtn').onclick = () => { document.getElementById('loginForm').classList.add('hidden'); document.getElementById('signupForm').classList.remove('hidden'); };
+    document.getElementById('toLoginBtn').onclick = () => { document.getElementById('signupForm').classList.add('hidden'); document.getElementById('loginForm').classList.remove('hidden'); };
+
+    document.getElementById('signupForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const users = getUsers();
+      const username = document.getElementById('signupUsername').value.trim();
+      if (users.some(u => u.username === username)) {
+        document.getElementById('signupExists').style.display = 'block';
+        return;
+      }
+      users.push({
+        name: document.getElementById('signupName').value,
+        username: username,
+        password: document.getElementById('signupPassword').value,
+        status: 'pending'
+      });
+      saveUsers(users);
+      document.getElementById('signupExists').style.display = 'none';
+      document.getElementById('signupSuccess').style.display = 'block';
+      document.getElementById('signupForm').reset();
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const users = getUsers();
+      const user = users.find(u => u.username === document.getElementById('loginUsername').value.trim() && u.password === document.getElementById('loginPassword').value);
+      
+      document.getElementById('loginError').style.display = 'none';
+      document.getElementById('loginPendingAlert').style.display = 'none';
+
+      if (!user) document.getElementById('loginError').style.display = 'block';
+      else if (user.status === 'pending') document.getElementById('loginPendingAlert').style.display = 'block';
+      else if (user.status === 'active') {
+        document.getElementById('authPage').classList.add('hidden');
+        document.getElementById('chatListPage').classList.remove('hidden');
+        document.getElementById('activeUserWelcome').textContent = "أهلاً بك يا " + user.name;
+      }
+    });
+  </script>
+</body>
+</html>
+
