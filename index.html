@@ -74,7 +74,6 @@
 
   <!-- Screen 1: Passcode & Auth Screen -->
   <div id="auth-screen" class="screen active">
-    <!-- Back Button -->
     <div class="back-btn-absolute" id="back-btn" onclick="goBackToPasscode()">
       <i class="fa-solid fa-arrow-left"></i>
     </div>
@@ -138,7 +137,14 @@
   <script>
     const SUPABASE_URL = 'https://aafnptpedklibvvytrdv.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZm5wdHBlZGtsaWJ2vnl0cmR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3OTk2NzQsImV4cCI6MjEwMjM3NTY3NH0.QuA-7sUFSF7z8tuQaccGI7Oo4jx8WjWoH6m1z9Ga9HQ';
-    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    let _supabase = null;
+    function getSupabase() {
+      if (!_supabase && window.supabase) {
+        _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+      return _supabase;
+    }
 
     let currentUser = "";
     let currentChatFriend = "";
@@ -196,11 +202,14 @@
           showError("رمز الأمان غير صحيح!");
         }
       } else if (authStep === 'login') {
-        const passInputElem = document.getElementById('auth-login-pass');
-        const passVal = passInputElem ? passInputElem.value.trim() : "";
+        const passElem = document.getElementById('auth-login-pass');
+        const passVal = passElem ? passElem.value.trim() : "";
         if (!passVal) { showError("أدخل كلمة المرور!"); return; }
 
-        const { data, error } = await _supabase
+        const client = getSupabase();
+        if (!client) { showError("تعذر الاتصال بالخادم، جرب مرة أخرى!"); return; }
+
+        const { data, error } = await client
           .from('account_requests')
           .select('*')
           .eq('username', val)
@@ -208,7 +217,7 @@
           .maybeSingle();
 
         if (error || !data) {
-          showError("الحساب غير موجود، أو لم تتم الموافقة عليه، أو البيانات خاطئة!");
+          showError("الحساب غير موجود، أو البيانات خاطئة!");
           return;
         }
 
@@ -224,16 +233,19 @@
         loadRecentChats();
 
       } else if (authStep === 'register') {
-        const passInputReg = document.getElementById('auth-input-pass');
-        const pass = passInputReg ? passInputReg.value.trim() : "";
+        const passElem = document.getElementById('auth-input-pass');
+        const pass = passElem ? passElem.value.trim() : "";
         if (!pass) { showError("أدخل كلمة المرور للحساب الجديد"); return; }
         
-        const { error } = await _supabase.from('account_requests').insert([
+        const client = getSupabase();
+        if (!client) { showError("تعذر الاتصال بالخادم، جرب مرة أخرى!"); return; }
+
+        const { error } = await client.from('account_requests').insert([
           { username: val, password: pass, status: 'pending' }
         ]);
 
         if (error) {
-          showError("حدث خطأ أثناء إرسال الطلب (تأكد من إنشاء جدول account_requests).");
+          showError("حدث خطأ أثناء إرسال الطلب.");
         } else {
           alert("تم إرسال طلب إنشاء الحساب بنجاح! انتظر موافقة المسؤول.");
           goBackToPasscode();
@@ -289,7 +301,8 @@
       chatScreen.classList.remove('active');
       homeScreen.classList.add('active');
       currentChatFriend = "";
-      if (messageSubscription) _supabase.removeChannel(messageSubscription);
+      const client = getSupabase();
+      if (messageSubscription && client) client.removeChannel(messageSubscription);
       loadRecentChats();
     }
 
@@ -297,7 +310,10 @@
       if (!currentUser) return;
       chatList.innerHTML = '<div style="text-align:center; padding: 20px;">جاري التحميل...</div>';
       
-      const { data, error } = await _supabase
+      const client = getSupabase();
+      if (!client) return;
+
+      const { data, error } = await client
         .from('private_messages')
         .select('*')
         .or(`sender.eq.${currentUser},receiver.eq.${currentUser}`)
@@ -340,7 +356,10 @@
       chatScreen.classList.add('active');
       chatBox.innerHTML = '<div style="text-align:center; padding: 20px;">جاري تحميل الرسائل...</div>';
       
-      const { data } = await _supabase
+      const client = getSupabase();
+      if (!client) return;
+
+      const { data } = await client
         .from('private_messages')
         .select('*')
         .or(`and(sender.eq.${currentUser},receiver.eq.${currentChatFriend}),and(sender.eq.${currentChatFriend},receiver.eq.${currentUser})`)
@@ -349,7 +368,7 @@
       chatBox.innerHTML = '';
       if (data) data.forEach(addMessageToScreen);
 
-      messageSubscription = _supabase.channel('private_chat')
+      messageSubscription = client.channel('private_chat')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'private_messages' }, payload => {
           const msg = payload.new;
           if ((msg.sender === currentUser && msg.receiver === currentChatFriend) || (msg.sender === currentChatFriend && msg.receiver === currentUser)) {
@@ -364,17 +383,4 @@
       group.className = `msg-group ${isMe ? 'me' : 'other'}`;
       const timeStr = new Date(msg.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
       group.innerHTML = `<div class="bubble">${msg.content}<span class="msg-time">${timeStr}</span></div>`;
-      chatBox.appendChild(group);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    async function sendMessage() {
-      const content = msgInput.value.trim();
-      if (!content || !currentChatFriend) return;
-      msgInput.value = '';
-      toggleSendBtn();
-      await _supabase.from('private_messages').insert([{ sender: currentUser, receiver: currentChatFriend, content: content }]);
-    }
-
-    function toggleSendBtn() {
-      const 
+      chatBox.app
