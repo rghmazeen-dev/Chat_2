@@ -72,29 +72,23 @@
 </head>
 <body>
 
-  <!-- Screen 1: Passcode & Auth Screen -->
   <div id="auth-screen" class="screen active">
     <div class="back-btn-absolute" id="back-btn" onclick="goBackToPasscode()">
       <i class="fa-solid fa-arrow-left"></i>
     </div>
-
     <div class="auth-container">
       <i class="fa-solid fa-lock" id="auth-icon"></i>
       <h2 id="auth-title">رمز الأمان</h2>
       <p id="auth-desc">أدخل رمز الأمان للوصول إلى النظام</p>
-      
       <div class="error-msg" id="error-box"></div>
-
       <div class="auth-input-wrapper">
         <input type="password" id="auth-input" placeholder="أدخل الكود هنا..." onkeypress="if(event.key==='Enter') handleAuthAction()">
       </div>
-      
       <button class="primary-btn" id="auth-btn" onclick="handleAuthAction()">متابعة</button>
       <span class="secondary-link" id="auth-switch-link" onclick="switchToRegister()" style="display:none;">ليس لديك حساب؟ إنشاء حساب جديد</span>
     </div>
   </div>
 
-  <!-- Screen 2: Home Screen -->
   <div id="home-screen" class="screen">
     <div class="header">
       <h3 id="welcome-text">المحادثات الخاصة</h3>
@@ -112,7 +106,6 @@
     </div>
   </div>
 
-  <!-- Screen 3: Private Chat Room -->
   <div id="chat-screen" class="screen">
     <div class="header">
       <div style="display: flex; align-items: center; gap: 15px;">
@@ -160,15 +153,8 @@
     const errorBox = document.getElementById('error-box');
     const backBtn = document.getElementById('back-btn');
 
-    function showError(msg) {
-      errorBox.innerText = msg;
-      errorBox.style.display = 'block';
-    }
-
-    function hideError() {
-      errorBox.innerText = '';
-      errorBox.style.display = 'none';
-    }
+    function showError(msg) { errorBox.innerText = msg; errorBox.style.display = 'block'; }
+    function hideError() { errorBox.innerText = ''; errorBox.style.display = 'none'; }
 
     async function handleAuthAction() {
       hideError();
@@ -184,9 +170,7 @@
           document.getElementById('auth-input').type = "text";
           document.getElementById('auth-input').value = "";
           document.getElementById('auth-input').placeholder = "اسم المستخدم (اليوزر نيم)";
-          
           backBtn.style.display = "flex";
-
           const container = document.querySelector('.auth-container');
           if (!document.getElementById('auth-login-pass')) {
             const wrap = document.createElement('div');
@@ -195,189 +179,137 @@
             wrap.innerHTML = `<input type="password" id="auth-login-pass" placeholder="كلمة المرور..." onkeypress="if(event.key==='Enter') handleAuthAction()">`;
             container.insertBefore(wrap, document.getElementById('auth-btn'));
           }
-
           document.getElementById('auth-btn').innerText = "دخول";
           document.getElementById('auth-switch-link').style.display = "block";
-        } else {
-          showError("رمز الأمان غير صحيح!");
-        }
+        } else { showError("رمز الأمان غير صحيح!"); }
       } else if (authStep === 'login') {
         const passElem = document.getElementById('auth-login-pass');
         const passVal = passElem ? passElem.value.trim() : "";
         if (!passVal) { showError("أدخل كلمة المرور!"); return; }
-
         const client = getSupabase();
-        if (!client) { showError("تعذر الاتصال بالخادم، جرب مرة أخرى!"); return; }
-
-        const { data, error } = await client
-          .from('account_requests')
-          .select('*')
-          .eq('username', val)
-          .eq('password', passVal)
-          .maybeSingle();
-
-        if (error || !data) {
-          showError("الحساب غير موجود، أو البيانات خاطئة!");
-          return;
-        }
-
-        if (data.status !== 'approved') {
-          showError("طلب الحساب الخاص بك قيد الانتظار ولم يتم الموافقة عليه بعد.");
-          return;
-        }
-
+        if (!client) { showError("تعذر الاتصال بالخادم!"); return; }
+        const { data, error } = await client.from('account_requests').select('*').eq('username', val).eq('password', passVal).maybeSingle();
+        if (error || !data) { showError("الحساب غير موجود، أو البيانات خاطئة!"); return; }
+        if (data.status !== 'approved') { showError("طلب الحساب قيد الانتظار."); return; }
         currentUser = val;
         document.getElementById('welcome-text').innerText = `مرحباً، ${currentUser}`;
         authScreen.classList.remove('active');
         homeScreen.classList.add('active');
         loadRecentChats();
-
       } else if (authStep === 'register') {
         const passElem = document.getElementById('auth-input-pass');
         const pass = passElem ? passElem.value.trim() : "";
-        if (!pass) { showError("أدخل كلمة المرور للحساب الجديد"); return; }
-        
+        if (!pass) { showError("أدخل كلمة المرور!"); return; }
         const client = getSupabase();
-        if (!client) { showError("تعذر الاتصال بالخادم، جرب مرة أخرى!"); return; }
-
-        const { error } = await client.from('account_requests').insert([
-          { username: val, password: pass, status: 'pending' }
-        ]);
-
-        if (error) {
-          console.error("Supabase Error:", error);
-          showError(error.message || "حدث خطأ أثناء إرسال الطلب.");
-        } else {
-          alert("تم إرسال طلب إنشاء الحساب بنجاح! انتظر موافقة المسؤول.");
-          goBackToPasscode();
-        }
+        if (!client) { showError("تعذر الاتصال!"); return; }
+        const { error } = await client.from('account_requests').insert([{ username: val, password: pass, status: 'pending' }]);
+        if (error) { showError(error.message || "خطأ في التسجيل."); } else { alert("تم إرسال الطلب!"); goBackToPasscode(); }
       }
     }
 
     function switchToRegister() {
-      hideError();
-      authStep = 'register';
+      hideError(); authStep = 'register';
       document.getElementById('auth-icon').className = "fa-solid fa-user-plus";
       document.getElementById('auth-title').innerText = "إنشاء حساب جديد";
-      document.getElementById('auth-desc').innerText = "سيتم إرسال طلب للموافقة عليه من الإدارة";
       document.getElementById('auth-input').placeholder = "اختر يوزر نيم جديد";
-      document.getElementById('auth-input').value = "";
-      
       const loginPassWrap = document.getElementById('login-pass-wrap');
       if (loginPassWrap) loginPassWrap.remove();
-
       const container = document.querySelector('.auth-container');
-      if (!document.getElementById('auth-input-pass')) {
-        const wrap = document.createElement('div');
-        wrap.className = "auth-input-wrapper";
-        wrap.id = "pass-wrap";
-        wrap.innerHTML = `<input type="password" id="auth-input-pass" placeholder="كلمة المرور للحساب..." onkeypress="if(event.key==='Enter') handleAuthAction()">`;
-        container.insertBefore(wrap, document.getElementById('auth-btn'));
-      }
+      const wrap = document.createElement('div');
+      wrap.className = "auth-input-wrapper";
+      wrap.id = "pass-wrap";
+      wrap.innerHTML = `<input type="password" id="auth-input-pass" placeholder="كلمة المرور..." onkeypress="if(event.key==='Enter') handleAuthAction()">`;
+      container.insertBefore(wrap, document.getElementById('auth-btn'));
       document.getElementById('auth-btn').innerText = "إرسال طلب التسجيل";
       document.getElementById('auth-switch-link').style.display = "none";
     }
 
     function goBackToPasscode() {
-      hideError();
-      authStep = 'passcode';
-      backBtn.style.display = "none";
+      hideError(); authStep = 'passcode'; backBtn.style.display = "none";
       document.getElementById('auth-icon').className = "fa-solid fa-lock";
       document.getElementById('auth-title').innerText = "رمز الأمان";
-      document.getElementById('auth-desc').innerText = "أدخل رمز الأمان للوصول إلى النظام";
       document.getElementById('auth-input').type = "password";
       document.getElementById('auth-input').value = "";
-      document.getElementById('auth-input').placeholder = "أدخل الكود هنا...";
-
       const loginPassWrap = document.getElementById('login-pass-wrap');
       if (loginPassWrap) loginPassWrap.remove();
       const passWrap = document.getElementById('pass-wrap');
       if (passWrap) passWrap.remove();
-
       document.getElementById('auth-btn').innerText = "متابعة";
-      document.getElementById('auth-switch-link').style.display = "none";
     }
 
     function goHome() {
-      chatScreen.classList.remove('active');
-      homeScreen.classList.add('active');
+      chatScreen.classList.remove('active'); homeScreen.classList.add('active');
       currentChatFriend = "";
-      const client = getSupabase();
-      if (messageSubscription && client) client.removeChannel(messageSubscription);
+      if (messageSubscription) getSupabase().removeChannel(messageSubscription);
       loadRecentChats();
     }
 
     async function loadRecentChats() {
       if (!currentUser) return;
-      chatList.innerHTML = '<div style="text-align:center; padding: 20px;">جاري التحميل...</div>';
-      
       const client = getSupabase();
-      if (!client) return;
-
-      const { data, error } = await client
-        .from('private_messages')
-        .select('*')
-        .or(`sender.eq.${currentUser},receiver.eq.${currentUser}`)
-        .order('created_at', { ascending: false });
-
-      if (error || !data || data.length === 0) {
-        chatList.innerHTML = `<div class="empty-state"><i class="fa-regular fa-comments"></i><p>لا توجد محادثات بعد. ابحث عن صديق للبدء!</p></div>`;
-        return;
-      }
-
+      const { data } = await client.from('private_messages').select('*').or(`sender.eq.${currentUser},receiver.eq.${currentUser}`).order('created_at', { ascending: false });
+      if (!data || data.length === 0) return;
       let friends = new Set();
-      data.forEach(msg => {
-        if (msg.sender !== currentUser) friends.add(msg.sender);
-        if (msg.receiver !== currentUser) friends.add(msg.receiver);
-      });
-
+      data.forEach(msg => { if (msg.sender !== currentUser) friends.add(msg.sender); if (msg.receiver !== currentUser) friends.add(msg.receiver); });
       chatList.innerHTML = '';
       friends.forEach(friend => {
         const div = document.createElement('div');
         div.className = 'chat-item';
         div.onclick = () => openChat(friend);
-        div.innerHTML = `<div class="avatar">${friend.charAt(0).toUpperCase()}</div><div><h4 style="font-size: 1rem;">${friend}</h4><p style="font-size: 0.8rem; color: var(--text-muted);">انقر لفتح المحادثة</p></div>`;
+        div.innerHTML = `<div class="avatar">${friend.charAt(0).toUpperCase()}</div><div><h4>${friend}</h4></div>`;
         chatList.appendChild(div);
       });
     }
 
     function startNewChat() {
       const friendName = document.getElementById('search-username').value.trim();
-      if (!friendName) return;
-      if (friendName === currentUser) { alert("لا يمكنك محادثة نفسك!"); return; }
+      if (!friendName || friendName === currentUser) return;
       openChat(friendName);
-      document.getElementById('search-username').value = '';
     }
 
     async function openChat(friendName) {
       currentChatFriend = friendName;
       document.getElementById('chat-with-name').innerText = currentChatFriend;
-      
-      homeScreen.classList.remove('active');
-      chatScreen.classList.add('active');
-      chatBox.innerHTML = '<div style="text-align:center; padding: 20px;">جاري تحميل الرسائل...</div>';
-      
-      const client = getSupabase();
-      if (!client) return;
-
-      const { data } = await client
-        .from('private_messages')
-        .select('*')
-        .or(`and(sender.eq.${currentUser},receiver.eq.${currentChatFriend}),and(sender.eq.${currentChatFriend},receiver.eq.${currentUser})`)
-        .order('created_at', { ascending: true });
-
+      homeScreen.classList.remove('active'); chatScreen.classList.add('active');
       chatBox.innerHTML = '';
+      const client = getSupabase();
+      const { data } = await client.from('private_messages').select('*').or(`and(sender.eq.${currentUser},receiver.eq.${currentChatFriend}),and(sender.eq.${currentChatFriend},receiver.eq.${currentUser})`).order('created_at', { ascending: true });
       if (data) data.forEach(addMessageToScreen);
-
-      messageSubscription = client.channel('private_chat')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'private_messages' }, payload => {
-          const msg = payload.new;
-          if ((msg.sender === currentUser && msg.receiver === currentChatFriend) || (msg.sender === currentChatFriend && msg.receiver === currentUser)) {
-            addMessageToScreen(msg);
-          }
-        }).subscribe();
+      messageSubscription = client.channel('private_chat').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'private_messages' }, payload => {
+        if ((payload.new.sender === currentUser && payload.new.receiver === currentChatFriend) || (payload.new.sender === currentChatFriend && payload.new.receiver === currentUser)) addMessageToScreen(payload.new);
+      }).subscribe();
     }
 
     function addMessageToScreen(msg) {
       const isMe = msg.sender === currentUser;
-      const group = document.createElement
+      const group = document.createElement('div');
+      group.className = `msg-group ${isMe ? 'me' : 'other'}`;
+      group.innerHTML = `<div class="bubble">${msg.content}</div><span class="msg-time">${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`;
+      chatBox.appendChild(group);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const text = msgInput.value.trim();
+      if (!text || !currentChatFriend) return;
+      msgInput.value = ''; toggleSendBtn();
+      await getSupabase().from('private_messages').insert([{ sender: currentUser, receiver: currentChatFriend, content: text }]);
+    }
+
+    function toggleSendBtn() {
+      const sendBtn = document.getElementById('send-btn');
+      const icons = document.getElementById('input-icons');
+      if (msgInput.value.trim().length > 0) { sendBtn.style.display = 'block'; icons.style.display = 'none'; }
+      else { sendBtn.style.display = 'none'; icons.style.display = 'flex'; }
+    }
+
+    function handleKeyPress(e) { if (e.key === 'Enter') sendMessage(); }
+
+    function toggleTheme() {
+      const newTheme = document.documentElement.getAttribute('data-theme') === 'crimson' ? 'neon' : 'crimson';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      document.getElementById('theme-icon').className = newTheme === 'neon' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+    }
+  </script>
+</body>
+</html>
