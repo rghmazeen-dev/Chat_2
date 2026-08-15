@@ -27,7 +27,6 @@
     .screen { display: none; width: 100vw; height: 100vh; flex-direction: column; background: var(--bg-radial); position: relative; }
     .screen.active { display: flex; }
 
-    /* زرار الباك الجديد */
     .back-btn-absolute { position: absolute; top: 20px; left: 20px; background: var(--card-bg); border: 1px solid var(--glass-border); color: var(--text-main); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20; display: none; }
     .back-btn-absolute:hover { border-color: var(--accent-color); color: var(--accent-color); }
 
@@ -180,7 +179,7 @@
           document.getElementById('auth-input').value = "";
           document.getElementById('auth-input').placeholder = "اسم المستخدم (اليوزر نيم)";
           
-          backBtn.style.display = "flex"; // إظهار زر الـ باك
+          backBtn.style.display = "flex";
 
           const container = document.querySelector('.auth-container');
           if (!document.getElementById('auth-login-pass')) {
@@ -197,7 +196,8 @@
           showError("رمز الأمان غير صحيح!");
         }
       } else if (authStep === 'login') {
-        const passVal = document.getElementById('auth-login-pass').value.trim();
+        const passInputElem = document.getElementById('auth-login-pass');
+        const passVal = passInputElem ? passInputElem.value.trim() : "";
         if (!passVal) { showError("أدخل كلمة المرور!"); return; }
 
         const { data, error } = await _supabase
@@ -205,7 +205,7 @@
           .select('*')
           .eq('username', val)
           .eq('password', passVal)
-          .single();
+          .maybeSingle();
 
         if (error || !data) {
           showError("الحساب غير موجود، أو لم تتم الموافقة عليه، أو البيانات خاطئة!");
@@ -224,7 +224,8 @@
         loadRecentChats();
 
       } else if (authStep === 'register') {
-        const pass = document.getElementById('auth-input-pass').value.trim();
+        const passInputReg = document.getElementById('auth-input-pass');
+        const pass = passInputReg ? passInputReg.value.trim() : "";
         if (!pass) { showError("أدخل كلمة المرور للحساب الجديد"); return; }
         
         const { error } = await _supabase.from('account_requests').insert([
@@ -376,5 +377,4 @@
     }
 
     function toggleSendBtn() {
-      const inputIcons = document.getElementById('input-icons');
-      const sendBtn = document.ge
+      const 
