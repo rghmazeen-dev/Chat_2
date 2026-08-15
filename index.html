@@ -27,7 +27,6 @@
     .screen { display: none; width: 100vw; height: 100vh; flex-direction: column; background: var(--bg-radial); position: relative; }
     .screen.active { display: flex; }
 
-    /* Auth & Passcode Modals/Screens */
     .auth-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
     .auth-container i { font-size: 4rem; color: var(--accent-color); margin-bottom: 20px; filter: drop-shadow(var(--glow-effect)); }
     .auth-container h2 { margin-bottom: 10px; font-size: 1.8rem; }
@@ -37,7 +36,6 @@
     .primary-btn { background: var(--accent-gradient); color: #fff; border: none; padding: 12px 30px; border-radius: 20px; font-size: 1.1rem; font-weight: 700; cursor: pointer; box-shadow: var(--msg-me-shadow); width: 100%; max-width: 350px; margin-top: 10px; }
     .secondary-link { color: var(--text-muted); margin-top: 15px; cursor: pointer; font-size: 0.9rem; text-decoration: underline; }
 
-    /* Home & Chat Styles */
     .header { padding: 15px 20px; border-bottom: 1px solid var(--glass-border); background-color: rgba(3, 7, 18, 0.75); backdrop-filter: blur(12px); display: flex; justify-content: space-between; align-items: center; z-index: 10; }
     .header h3 { font-size: 1.2rem; }
     .search-bar { padding: 15px 20px; display: flex; gap: 10px; border-bottom: 1px solid var(--glass-border); }
@@ -69,10 +67,26 @@
 </head>
 <body>
 
-  <!-- Screen 1: Home Screen (Default Open, Empty Chat List) -->
-  <div id="home-screen" class="screen active">
+  <!-- Screen 1: Passcode Screen (First thing to appear) -->
+  <div id="auth-screen" class="screen active">
+    <div class="auth-container">
+      <i class="fa-solid fa-lock" id="auth-icon"></i>
+      <h2 id="auth-title">رمز الأمان</h2>
+      <p id="auth-desc">أدخل رمز الأمان للوصول إلى النظام</p>
+      
+      <div class="auth-input-wrapper">
+        <input type="password" id="auth-input" placeholder="أدخل الكود هنا...">
+      </div>
+      
+      <button class="primary-btn" id="auth-btn" onclick="handleAuthAction()">متابعة</button>
+      <span class="secondary-link" id="auth-switch-link" onclick="switchToRegister()" style="display:none;">ليس لديك حساب؟ إنشاء حساب جديد</span>
+    </div>
+  </div>
+
+  <!-- Screen 2: Home Screen (Chat List & Search) -->
+  <div id="home-screen" class="screen">
     <div class="header">
-      <h3>المحادثات الخاصة</h3>
+      <h3 id="welcome-text">المحادثات الخاصة</h3>
       <button class="theme-btn" onclick="toggleTheme()"><i class="fa-solid fa-sun" id="theme-icon"></i></button>
     </div>
     <div class="search-bar">
@@ -84,22 +98,6 @@
         <i class="fa-regular fa-comments"></i>
         <p>لا توجد محادثات بعد. ابحث عن صديق للبدء!</p>
       </div>
-    </div>
-  </div>
-
-  <!-- Screen 2: Passcode & Login Screen -->
-  <div id="auth-screen" class="screen">
-    <div class="auth-container">
-      <i class="fa-solid fa-lock" id="auth-icon"></i>
-      <h2 id="auth-title">أدخل كلمة المرور</h2>
-      <p id="auth-desc">يجب إدخال رمز الأمان (2411712) للمتابعة</p>
-      
-      <div class="auth-input-wrapper">
-        <input type="password" id="auth-input" placeholder="أدخل الكود هنا...">
-      </div>
-      
-      <button class="primary-btn" id="auth-btn" onclick="handleAuthAction()">متابعة</button>
-      <span class="secondary-link" id="auth-switch-link" onclick="switchToRegister()" style="display:none;">ليس لديك حساب؟ إنشاء حساب جديد</span>
     </div>
   </div>
 
@@ -142,28 +140,6 @@
     const chatList = document.getElementById('chat-list');
     const msgInput = document.getElementById('message-input');
 
-    // Intercept clicking on chat input if user is not logged in
-    document.getElementById('search-username').addEventListener('focus', (e) => {
-      if (!currentUser) {
-        e.target.blur();
-        openAuthFlow();
-      }
-    });
-
-    function openAuthFlow() {
-      authStep = 'passcode';
-      document.getElementById('auth-icon').className = "fa-solid fa-lock";
-      document.getElementById('auth-title').innerText = "أدخل كلمة المرور";
-      document.getElementById('auth-desc').innerText = "يجب إدخال رمز الأمان (2411712) للمتابعة";
-      document.getElementById('auth-input').type = "password";
-      document.getElementById('auth-input').placeholder = "رمز الأمان...";
-      document.getElementById('auth-btn').innerText = "متابعة";
-      document.getElementById('auth-switch-link').style.display = "none";
-      
-      homeScreen.classList.remove('active');
-      authScreen.classList.add('active');
-    }
-
     async function handleAuthAction() {
       const val = document.getElementById('auth-input').value.trim();
       if (!val) { alert("يرجى ملء الحقل!"); return; }
@@ -173,26 +149,58 @@
           authStep = 'login';
           document.getElementById('auth-icon').className = "fa-solid fa-right-to-bracket";
           document.getElementById('auth-title').innerText = "تسجيل الدخول";
-          document.getElementById('auth-desc').innerText = "أدخل اسم المستخدم الخاص بك";
+          document.getElementById('auth-desc').innerText = "أدخل اسم المستخدم وكلمة المرور الخاصة بك";
           document.getElementById('auth-input').type = "text";
           document.getElementById('auth-input').value = "";
           document.getElementById('auth-input').placeholder = "اسم المستخدم (اليوزر نيم)";
+          
+          // Add password field for login check
+          const container = document.querySelector('.auth-container');
+          if (!document.getElementById('auth-login-pass')) {
+            const wrap = document.createElement('div');
+            wrap.className = "auth-input-wrapper";
+            wrap.id = "login-pass-wrap";
+            wrap.innerHTML = `<input type="password" id="auth-login-pass" placeholder="كلمة المرور...">`;
+            container.insertBefore(wrap, document.getElementById('auth-btn'));
+          }
+
           document.getElementById('auth-btn').innerText = "دخول";
           document.getElementById('auth-switch-link').style.display = "block";
         } else {
           alert("رمز الأمان غير صحيح!");
         }
       } else if (authStep === 'login') {
-        // Simple validation or check if user exists & approved
+        const passVal = document.getElementById('auth-login-pass').value.trim();
+        if (!passVal) { alert("أدخل كلمة المرور!"); return; }
+
+        // Check if account is approved in account_requests table
+        const { data, error } = await _supabase
+          .from('account_requests')
+          .select('*')
+          .eq('username', val)
+          .eq('password', passVal)
+          .single();
+
+        if (error || !data) {
+          alert("الحساب غير موجود، أو لم تتم الموافقة عليه بعد من المسؤول، أو بيانات الدخول خاطئة!");
+          return;
+        }
+
+        if (data.status !== 'approved') {
+          alert("طلب الحساب الخاص بك قيد الانتظار ولم يتم الموافقة عليه بعد.");
+          return;
+        }
+
         currentUser = val;
+        document.getElementById('welcome-text').innerText = `مرحباً، ${currentUser}`;
         authScreen.classList.remove('active');
         homeScreen.classList.add('active');
         loadRecentChats();
+
       } else if (authStep === 'register') {
         const pass = document.getElementById('auth-input-pass').value.trim();
         if (!pass) { alert("أدخل كلمة المرور للحساب الجديد"); return; }
         
-        // Send request to database table account_requests
         const { error } = await _supabase.from('account_requests').insert([
           { username: val, password: pass, status: 'pending' }
         ]);
@@ -200,8 +208,8 @@
         if (error) {
           alert("حدث خطأ أثناء إرسال الطلب.");
         } else {
-          alert("تم إرسال طلب إنشاء الحساب بنجاح! انتظر موافقة المسؤول لتتمكن من الدخول.");
-          openAuthFlow();
+          alert("تم إرسال طلب إنشاء الحساب بنجاح! انتظر موافقة المسؤول لتتمكن من الدخول لاحقاً.");
+          location.reload();
         }
       }
     }
@@ -210,11 +218,13 @@
       authStep = 'register';
       document.getElementById('auth-icon').className = "fa-solid fa-user-plus";
       document.getElementById('auth-title').innerText = "إنشاء حساب جديد";
-      document.getElementById('auth-desc').innerText = "سيتم إرسال طلب للموافقة عليه";
+      document.getElementById('auth-desc').innerText = "سيتم إرسال طلب للموافقة عليه من الإدارة";
       document.getElementById('auth-input').placeholder = "اختر يوزر نيم جديد";
       document.getElementById('auth-input').value = "";
       
-      // Add password field for register
+      const loginPassWrap = document.getElementById('login-pass-wrap');
+      if (loginPassWrap) loginPassWrap.remove();
+
       const container = document.querySelector('.auth-container');
       if (!document.getElementById('auth-input-pass')) {
         const wrap = document.createElement('div');
@@ -267,7 +277,6 @@
     }
 
     function startNewChat() {
-      if (!currentUser) { openAuthFlow(); return; }
       const friendName = document.getElementById('search-username').value.trim();
       if (!friendName) return;
       if (friendName === currentUser) { alert("لا يمكنك محادثة نفسك!"); return; }
