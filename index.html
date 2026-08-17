@@ -275,10 +275,12 @@
     }
 
     .chat-user-status.online { color:#22c55e; }
+
     .chat-user-status.online .status-dot {
       background:#22c55e;
       box-shadow:0 0 7px rgba(34,197,94,.65);
     }
+
     .chat-user-status.offline .status-dot { background:#8b8f98; }
 
     .chat-header-actions {
@@ -387,6 +389,20 @@
       background:rgba(22,26,29,.9);
     }
 
+    .chat-item .avatar {
+      width:45px;
+      height:45px;
+      border-radius:50%;
+      background:var(--accent-gradient);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:bold;
+      font-size:1.2rem;
+      color:#fff;
+      flex:0 0 45px;
+    }
+
     .chat-box {
       flex:1;
       min-height:0;
@@ -402,7 +418,7 @@
       flex-direction:column;
       margin-bottom:12px;
       width:fit-content;
-      max-width:80%;
+      max-width:75%;
       position:relative;
       min-width:0;
     }
@@ -426,6 +442,91 @@
       user-select:none;
       -webkit-touch-callout:none;
       cursor:default;
+    }
+
+    .message-actions,
+    .emoji-picker {
+      display:none !important;
+    }
+
+    .message-actions {
+      display:none;
+      position:absolute;
+      bottom:calc(100% + 6px);
+      right:0;
+      background:var(--card-bg);
+      border:1px solid var(--glass-border);
+      border-radius:16px;
+      padding:6px;
+      gap:4px;
+      z-index:50;
+      box-shadow:var(--glow-effect);
+      white-space:nowrap;
+    }
+
+    .msg-group.show-actions .message-actions { display:flex; }
+
+    .message-actions button {
+      border:none;
+      background:transparent;
+      cursor:pointer;
+      font-size:1.2rem;
+      padding:5px;
+      border-radius:10px;
+      color:var(--text-main);
+    }
+
+    .message-actions button:hover { background:rgba(255,255,255,.08); }
+
+    .reaction-more {
+      font-size:1.1rem !important;
+      color:var(--text-main);
+    }
+
+    .emoji-picker {
+      display:none;
+      position:absolute;
+      bottom:calc(100% + 6px);
+      right:0;
+      width:min(310px,88vw);
+      max-height:220px;
+      overflow-y:auto;
+      background:var(--card-bg);
+      border:1px solid var(--glass-border);
+      border-radius:16px;
+      padding:10px;
+      grid-template-columns:repeat(8,1fr);
+      gap:5px;
+      z-index:60;
+      box-shadow:var(--glow-effect);
+    }
+
+    .emoji-picker.show { display:grid; }
+
+    .emoji-picker button {
+      border:0;
+      background:transparent;
+      font-size:1.35rem;
+      padding:5px;
+      cursor:pointer;
+      border-radius:9px;
+    }
+
+    .emoji-picker button:hover { background:rgba(255,255,255,.08); }
+
+    .reaction-badge {
+      display:flex;
+      gap:3px;
+      margin-top:4px;
+      flex-wrap:wrap;
+    }
+
+    .reaction-badge span {
+      background:var(--card-bg);
+      border:1px solid var(--glass-border);
+      border-radius:12px;
+      padding:2px 6px;
+      font-size:.75rem;
     }
 
     .msg-group.me .bubble {
@@ -461,97 +562,6 @@
       text-align:left;
     }
 
-    /* === تعديلات استطلاع الرأي داخل الشات (منع التداخل وضبط السحابة) === */
-    .poll-card {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      width: min(100%, 340px);
-      min-width: 240px;
-      direction: rtl;
-      box-sizing: border-box;
-    }
-
-    .poll-card-title {
-      font-weight: 800;
-      font-size: 0.98rem;
-      white-space: pre-wrap;
-      line-height: 1.5;
-      text-align: right;
-      overflow-wrap: anywhere;
-      color: inherit;
-    }
-
-    .poll-vote-btn {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 14px;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      background: rgba(255, 255, 255, 0.05);
-      color: var(--text-main);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      box-sizing: border-box;
-      direction: rtl;
-      text-align: right;
-    }
-
-    .poll-vote-btn:hover {
-      border-color: var(--accent-color);
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .poll-vote-btn.selected {
-      border-color: var(--accent-color);
-      background: rgba(255, 255, 255, 0.16);
-    }
-
-    .poll-vote-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-      gap: 10px;
-    }
-
-    .poll-vote-label {
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: normal;
-      word-break: break-word;
-      text-align: right;
-      direction: rtl;
-      font-size: 0.9rem;
-    }
-
-    .poll-vote-count {
-      color: var(--text-muted);
-      font-size: 0.78rem;
-      white-space: nowrap;
-      flex: 0 0 auto;
-    }
-
-    .poll-results {
-      color: var(--text-muted);
-      font-size: 0.75rem;
-      text-align: right;
-      margin-top: 2px;
-    }
-
-    /* باقي المكونات والتنسيقات */
-    .attachment-card { display:flex; flex-direction:column; gap:8px; }
-    .attachment-card a { color:inherit; text-decoration:none; }
-    .attachment-preview-image { max-width:100%; max-height:280px; border-radius:14px; display:block; object-fit:contain; }
-    .attachment-preview-video { max-width:100%; max-height:300px; border-radius:14px; display:block; }
-    .attachment-file { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:13px; background:rgba(255,255,255,.06); }
-    .attachment-file i { color:var(--accent-color); font-size:1.3rem; }
-    .location-card { display:flex; align-items:center; gap:10px; }
-    .location-card i { color:#22c55e; font-size:1.4rem; }
-
     .input-container {
       position:fixed;
       left:0;
@@ -566,6 +576,7 @@
       gap:12px;
       backdrop-filter:blur(10px);
       z-index:40;
+      transition:bottom .12s ease;
     }
 
     .input-wrapper {
@@ -581,6 +592,7 @@
       min-width:0;
       direction:ltr;
       overflow:hidden;
+      transition:height .12s ease;
     }
 
     .input-wrapper textarea {
@@ -600,6 +612,15 @@
       padding:6px 2px;
       direction:rtl;
       text-align:right;
+      -webkit-user-select:text;
+      user-select:text;
+      -webkit-tap-highlight-color:transparent;
+      font-family:'Cairo', -apple-system, sans-serif;
+    }
+
+    .input-wrapper textarea::placeholder {
+      color:var(--text-muted);
+      opacity:.85;
     }
 
     .attach-btn {
@@ -616,21 +637,17 @@
       justify-content:center;
       font-size:1.15rem;
       cursor:pointer;
+      padding:0;
+      transition:color .2s, background .2s, transform .15s;
     }
 
-    .send-btn {
-      grid-column:3;
-      grid-row:1;
-      width:34px;
-      height:34px;
+    .attach-btn:hover {
       color:var(--accent-color);
-      font-size:1.3rem;
-      cursor:pointer;
-      display:none;
-      padding:4px;
-      align-items:center;
-      justify-content:center;
-      border-radius:50%;
+      background:rgba(255,255,255,.07);
+    }
+
+    .attach-btn:active {
+      transform:scale(.94);
     }
 
     .attachment-menu {
@@ -644,6 +661,7 @@
       border-radius:18px;
       box-shadow:0 14px 40px rgba(0,0,0,.45),var(--glow-effect);
       backdrop-filter:blur(16px);
+      -webkit-backdrop-filter:blur(16px);
       display:none;
       flex-direction:column;
       gap:5px;
@@ -663,6 +681,10 @@
       cursor:pointer;
       text-align:right;
     }
+    .attachment-option:hover {
+      background:rgba(255,255,255,.09);
+      border-color:var(--glass-border);
+    }
     .attachment-option i {
       width:30px;
       text-align:center;
@@ -670,6 +692,159 @@
       font-size:1.05rem;
     }
     .attachment-option span { flex:1; font-weight:700; font-size:.86rem; }
+
+    /* التعديلات المحسنة لبطاقة الاستطلاع داخل الشات لمنع تداخل النصوص والخطوط */
+    .poll-card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: min(100%, 320px);
+      min-width: 240px;
+      direction: rtl;
+    }
+    .poll-card-title {
+      font-weight: 800;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      text-align: right;
+      overflow-wrap: anywhere;
+      color: inherit;
+    }
+    .poll-vote-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 42px;
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      cursor: pointer;
+      gap: 10px;
+      transition: all 0.2s ease;
+    }
+    .poll-vote-btn:hover { 
+      border-color: var(--accent-color); 
+      background: rgba(255, 255, 255, 0.09);
+    }
+    .poll-vote-btn.selected { 
+      border-color: var(--accent-color); 
+      background: rgba(255, 255, 255, 0.12); 
+    }
+    .poll-vote-row { 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between; 
+      width: 100%; 
+      gap: 8px; 
+    }
+    .poll-vote-label { 
+      flex: 1;
+      text-align: right; 
+      direction: rtl; 
+      font-size: 0.88rem;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .poll-vote-count { 
+      color: var(--text-muted); 
+      font-size: 0.78rem; 
+      white-space: nowrap; 
+      flex: 0 0 auto; 
+    }
+    .poll-results { 
+      color: var(--text-muted); 
+      font-size: 0.75rem; 
+      text-align: right; 
+      margin-top: 2px;
+    }
+
+    .send-btn {
+      grid-column:3;
+      grid-row:1;
+      width:34px;
+      height:34px;
+      color:var(--accent-color);
+      font-size:1.3rem;
+      cursor:pointer;
+      display:none;
+      padding:4px;
+      align-items:center;
+      justify-content:center;
+      border-radius:50%;
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    .send-btn:active { transform:scale(.92); }
+
+    .theme-btn {
+      background:transparent;
+      border:none;
+      color:var(--accent-color);
+      font-size:1.2rem;
+      cursor:pointer;
+      position:relative;
+      padding:5px;
+    }
+
+    .theme-picker {
+      position:fixed;
+      top:68px;
+      right:16px;
+      width:190px;
+      padding:10px;
+      background:rgba(18,18,18,.97);
+      border:1px solid var(--glass-border);
+      border-radius:18px;
+      box-shadow:0 14px 40px rgba(0,0,0,.45), var(--glow-effect);
+      backdrop-filter:blur(16px);
+      display:none;
+      flex-direction:column;
+      gap:7px;
+      z-index:250;
+    }
+    .theme-picker.show { display:flex; }
+    .theme-picker-title {
+      color:#fff;
+      font-size:.82rem;
+      font-weight:800;
+      padding:4px 8px 7px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      margin-bottom:2px;
+    }
+    .theme-option {
+      width:100%;
+      border:1px solid transparent;
+      background:rgba(255,255,255,.045);
+      color:#f5f5f5;
+      border-radius:13px;
+      padding:9px 10px;
+      display:flex;
+      align-items:center;
+      gap:9px;
+      cursor:pointer;
+      text-align:right;
+    }
+    .theme-option:hover { background:rgba(255,255,255,.09); }
+    .theme-option.active {
+      border-color:rgba(255,255,255,.25);
+      background:rgba(255,255,255,.12);
+    }
+    .theme-dot {
+      width:23px;
+      height:23px;
+      flex:0 0 23px;
+      border-radius:50%;
+      border:1px solid rgba(255,255,255,.25);
+    }
+    .theme-dot.crimson { background:linear-gradient(135deg,#ef233c,#800020); }
+    .theme-dot.neon { background:linear-gradient(135deg,#00f0ff,#0072ff); }
+    .theme-dot.mono { background:linear-gradient(135deg,#fff,#bdbdbd 50%,#333); }
+    .theme-option-name { flex:1; font-size:.82rem; font-weight:700; }
+    .theme-option-check { opacity:0; font-size:.8rem; }
+    .theme-option.active .theme-option-check { opacity:1; }
 
     .modal {
       display:none;
@@ -691,6 +866,7 @@
       display:flex;
       flex-direction:column;
       max-height:80vh;
+      box-shadow:var(--glow-effect);
     }
     .modal-head {
       display:flex;
@@ -700,22 +876,20 @@
       border-bottom:1px solid var(--glass-border);
       padding-bottom:10px;
     }
-    .modal-close { cursor:pointer; font-size:1.2rem; color:var(--text-muted); }
+    .modal-close {
+      cursor:pointer;
+      font-size:1.2rem;
+      color:var(--text-muted);
+    }
+    .requests-list {
+      overflow-y:auto;
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
   </style>
 </head>
-
 <body>
-  <div id="auth-screen" class="screen active">
-    </div>
-  
-  <div id="home-screen" class="screen">
-    </div>
-
-  <div id="chat-screen" class="screen">
-    </div>
-
-  <script>
-    // كافة الوظائف البرمجية الخاصة بـ Supabase وإرسال الرسائل والاستطلاعات تعمل هنا بسلاسة
-  </script>
-</body>
+  </body>
 </html>
