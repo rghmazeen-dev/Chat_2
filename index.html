@@ -183,6 +183,7 @@
     let heartbeatInterval = null;
     let currentChatFriend = "";
     let messageSubscription = null;
+    let userStatusSubscription = null;
     let authStep = 'passcode'; 
 
     const authScreen = document.getElementById('auth-screen');
@@ -268,7 +269,6 @@
       updateAuthUI();
     }
 
-    // تشغيل العداد الخفي لزمن الاستخدام
     function startUsageHeartbeat() {
       if (heartbeatInterval) clearInterval(heartbeatInterval);
       heartbeatInterval = setInterval(async () => {
@@ -327,7 +327,6 @@
           return;
         }
 
-        // فحص الـ Ban والـ Pending
         if (data.status === 'rejected') {
           showError("your account is banned !");
           return;
@@ -347,6 +346,33 @@
           
           startUsageHeartbeat();
           loadRecentChats();
+
+          // المراقبة اللحظية للحظر فور حظر الحساب من الهاب
+          if (userStatusSubscription) client.removeChannel(userStatusSubscription);
+          
+          userStatusSubscription = client
+            .channel(`user_status_${data.id}`)
+            .on('postgres_changes', {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'account_requests',
+              filter: `id=eq.${data.id}`
+            }, payload => {
+              if (payload.new.status === 'rejected') {
+                if (heartbeatInterval) clearInterval(heartbeatInterval);
+                if (messageSubscription) client.removeChannel(messageSubscription);
+                
+                chatScreen.classList.remove('active');
+                homeScreen.classList.remove('active');
+                authScreen.classList.add('active');
+                
+                switchToLogin();
+                showError("your account is banned !");
+                currentUser = "";
+                currentAccountData = null;
+              }
+            })
+            .subscribe();
         }
 
       } else if (authStep === 'register') {
@@ -383,120 +409,4 @@
 
     async function loadRecentChats() {
       if (!currentUser) return;
-      const client = getSupabase();
-      if (!client) return;
-
-      const { data, error } = await client
-        .from('private_messages')
-        .select('*')
-        .or(`sender.eq.${currentUser},receiver.eq.${currentUser}`)
-        .order('created_at', { ascending: false });
-
-      if (error || !data || data.length === 0) return;
-
-      let friends = new Set();
-      data.forEach(msg => {
-        if (msg.sender !== currentUser) friends.add(msg.sender);
-        if (msg.receiver !== currentUser) friends.add(msg.receiver);
-      });
-
-      chatList.innerHTML = '';
-      friends.forEach(friend => {
-        const div = document.createElement('div');
-        div.className = 'chat-item';
-        div.onclick = () => openChat(friend);
-        div.innerHTML = `
-          <div class="avatar">${friend.charAt(0).toUpperCase()}</div>
-          <div><h4>${friend}</h4></div>
-        `;
-        chatList.appendChild(div);
-      });
-    }
-
-    function startNewChat() {
-      const friendName = document.getElementById('search-username').value.trim();
-            if (!friendName || friendName === currentUser) return;
-      openChat(friendName);
-    }
-
-    async function openChat(friendName) {
-      currentChatFriend = friendName;
-      document.getElementById('chat-with-name').innerText = currentChatFriend;
-      homeScreen.classList.remove('active');
-      chatScreen.classList.add('active');
-      chatBox.innerHTML = '';
-
-      const client = getSupabase();
-      if (!client) return;
-
-      const { data } = await client
-        .from('private_messages')
-        .select('*')
-        .or(`and(sender.eq.${currentUser},receiver.eq.${currentChatFriend}),and(sender.eq.${currentChatFriend},receiver.eq.${currentUser})`)
-        .order('created_at', { ascending: true });
-
-      if (data) data.forEach(addMessageToScreen);
-
-      messageSubscription = client.channel(`private_chat_${currentUser}_${currentChatFriend}`)
-        .on('postgres_changes', { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'private_messages' 
-        }, payload => {
-          const m = payload.new;
-          if ((m.sender === currentUser && m.receiver === currentChatFriend) || 
-              (m.sender === currentChatFriend && m.receiver === currentUser)) {
-            addMessageToScreen(m);
-          }
-        })
-        .subscribe();
-    }
-
-    function addMessageToScreen(msg) {
-      const isMe = msg.sender === currentUser;
-      const group = document.createElement('div');
-      group.className = `msg-group ${isMe ? 'me' : 'other'}`;
-      
-      const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      group.innerHTML = `
-        <div class="bubble">${msg.content}</div>
-        <span class="msg-time">${timeStr}</span>
-      `;
-      chatBox.appendChild(group);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    async function sendMessage() {
-      const text = msgInput.value.trim();
-      if (!text || !currentChatFriend) return;
-      msgInput.value = '';
-      toggleSendBtn();
-
-      const client = getSupabase();
-      if (!client) return;
-
-      await client.from('private_messages').insert([
-        { sender: currentUser, receiver: currentChatFriend, content: text }
-      ]);
-    }
-
-    function toggleSendBtn() {
-      const sendBtn = document.getElementById('send-btn');
-      const icons = document.getElementById('input-icons');
-      if (msgInput.value.trim().length > 0) {
-        sendBtn.style.display = 'block';
-        icons.style.display = 'none';
-      } else {
-        sendBtn.style.display = 'none';
-        icons.style.display = 'flex';
-      }
-    }
-
-    function toggleTheme() {
-      const newTheme = document.documentElement.getAttribute('data-theme') === 'crimson' ? 'neon' : 'crimson';
-      document.documentElement.setAttribute('data-theme', newTheme);
-      document.getElementById('theme-icon').className = newTheme === 'neon' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
-    }
-  </script>
-</body>
-</html>
+      const client = getSupab
