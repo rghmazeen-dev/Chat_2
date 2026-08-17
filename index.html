@@ -299,4 +299,472 @@
       const wrapPass = document.getElementById('wrap-password');
       const switchLink = document.getElementById('auth-switch-link');
       const loginLink = document.getElementById('auth-login-link');
-      const authTitle = document.getEleme
+            friends.forEach(friend => {
+        const div = document.createElement('div');
+        div.className = 'chat-item';
+        div.onclick = () => openChat(friend);
+        div.innerHTML = `
+          <div class="avatar">${friend.charAt(0).toUpperCase()}</div>
+          <div><h4>${friend}</h4></div>
+        `;
+        chatList.appendChild(div);
+      });
+    }
+
+    async function loadIncomingRequests() {
+      const client = getSupabase();
+      if (!client || !currentUser) return;
+
+      const { data } = await client
+        .from('chat_requests')
+        .select('*')
+        .eq('receiver', currentUser)
+        .eq('status', 'pending');
+
+      const reqBadge = document.getElementById('req-badge');
+      const reqList = document.getElementById('requests-list');
+
+      if (!data || data.length === 0) {
+        reqBadge.style.display = 'none';
+        reqList.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: 20px;">لا توجد طلبات جديدة</div>`;
+        return;
+      }
+
+      reqBadge.style.display = 'block';
+      reqBadge.innerText = data.length;
+
+      reqList.innerHTML = '';
+      data.forEach(req => {
+        const item = document.createElement('div');
+        item.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:var(--bg-main); padding:10px 15px; border-radius:12px; border:1px solid var(--glass-border);";
+        item.innerHTML = `
+          <div>
+            <h4 style="font-size:0.95rem; color:var(--text-main);">${req.sender}</h4>
+            <span style="font-size:0.75rem; color:var(--text-muted);">يرغب في مراسلتك</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button onclick="respondToRequest(${req.id}, 'accepted', '${req.sender}')" style="background:#22c55e; color:white; border:none; padding:6px 12px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:0.8rem;">قبول</button>
+            <button onclick="respondToRequest(${req.id}, 'rejected', '${req.sender}')" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:0.8rem;">رفض</button>
+          </div>
+        `;
+        reqList.appendChild(item);
+      });
+    }
+
+    async function respondToRequest(reqId, newStatus, senderName) {
+      const client = getSupabase();
+      if (!client) return;
+
+      const { error } = await client
+        .from('chat_requests')
+        .update({ status: newStatus })
+        .eq('id', reqId);
+
+      if (error) {
+        alert("حدث خطأ: " + error.message);
+        return;
+      }
+
+      loadIncomingRequests();
+      loadRecentChats();
+      if (newStatus === 'accepted') {
+        closeRequestsModal();
+        openChat(senderName);
+      }
+    }
+
+    function openRequestsModal() {
+      document.getElementById('requests-modal').style.display = 'flex';
+      loadIncomingRequests();
+    }
+
+    function closeRequestsModal() {
+      document.getElementById('requests-modal').style.display = 'none';
+    }
+
+    async function startNewChat() {
+      const searchInput = document.getElementById('search-username');
+      const friendName = searchInput.value.trim();
+      
+      if (!friendName) {
+        alert("يرجى كتابة اسم المستخدم للبحث!");
+        return;
+      }
+
+      if (friendName === currentUser) {
+        alert("لا يمكنك بدء محادثة مع نفسك!");
+        return;
+      }
+
+      const client = getSupabase();
+      if (!client) return;
+
+      const { data: userCheck, error: userError } = await client
+        .from('account_requests')
+        .select('username')
+        .eq('username', friendName)
+        .eq('status', 'approved')
+        .maybeSingle();
+
+      if (userError || !userCheck) {
+        alert("المستخدم غير موجود أو لم يتم قبول حسابه بعد!");
+        return;
+      }
+
+      const { data: existingReq } = await client
+        .from('chat_requests')
+        .select('*')
+        .or(`and(sender.eq.${currentUser},receiver.eq.${friendName}),and(sender.eq.${friendName},receiver.eq.${currentUser})`)
+        .maybeSingle();
+
+      if (existingReq) {
+        if (existingReq.status === 'accepted') {
+          searchInput.value = '';
+          openChat(friendName);
+          return;
+        } else if (existingReq.status === 'pending') {
+          alert("يوجد طلب محادثة معلق بالفعل مع هذا المستخدم!");
+          return;
+        } else if (existingReq.status === 'rejected') {
+          await client.from('chat_requests').update({ status: 'pending', sender: currentUser, receiver: friendName }).eq('id', existingReq.id);
+          alert("تم إرسال طلب المحادثة بنجاح!");
+          searchInput.value = '';
+          return;
+        }
+      }
+
+      const { error: insertError } = await client
+        .from('chat_requests')
+        .insert([{ sender: currentUser, receiver: friendName, status: 'pending' }]);
+
+      if (insertError) {
+        alert("حدث خطأ أثناء إرسال الطلب: " + insertError.message);
+      } else {
+        alert("تم إرسال طلب المحادثة بنجاح! في انتظار قبول الطرف الآخر.");
+        searchInput.value = '';
+      }
+    }
+
+    async function openChat(friendName) {
+      currentChatFriend = friendName;
+
+      const nameEl = document.getElementById('chat-with-name');
+      const statusEl = document.getElementById('chat-user-status');
+      const avatarEl = document.getElementById('chat-avatar');
+      nameEl.innerText = currentChatFriend;
+      avatarEl.innerText = (currentChatFriend || 'U').charAt(0).toUpperCase();
+      updateChatUserStatus();
+
+      homeScreen.classList.remove('active');
+      chatScreen.classList.add('active');
+      chatBox.innerHTML = '';
+
+      // فتح لوحة مفاتيح الهاتف: نركز على الحقل داخل نفس تفاعل المستخدم،
+      // ثم نعيد التركيز بعد رسم شاشة الشات. ده مهم خصوصًا في Android WebView.
+      msgInput.removeAttribute('readonly');
+      msgInput.removeAttribute('disabled');
+      msgInput.style.pointerEvents = 'auto';
+      msgInput.setSelectionRange(msgInput.value.length, msgInput.value.length);
+      try { msgInput.focus({ preventScroll: true }); } catch (e) { msgInput.focus(); }
+      try { msgInput.click(); } catch (e) {}
+
+      requestAnimationFrame(() => {
+        try { msgInput.focus({ preventScroll: true }); } catch (e) { msgInput.focus(); }
+        try { msgInput.click(); } catch (e) {}
+      });
+
+      setTimeout(() => {
+        if (chatScreen.classList.contains('active')) {
+          try { msgInput.focus({ preventScroll: true }); } catch (e) { msgInput.focus(); }
+        }
+      }, 120);
+
+      const client = getSupabase();
+      if (!client) return;
+
+      const { data } = await client
+        .from('private_messages')
+        .select('*')
+        .or(`and(sender.eq.${currentUser},receiver.eq.${currentChatFriend}),and(sender.eq.${currentChatFriend},receiver.eq.${currentUser})`)
+        .order('created_at', { ascending: true });
+
+      if (data && data.length > 0) {
+        data.forEach(addMessageToScreen);
+      } else {
+        chatBox.innerHTML = `<div style="text-align:center; color: var(--text-muted); margin-top:20px;">ابدأ المحادثة الآن مع ${currentChatFriend}!</div>`;
+      }
+
+      if (messageSubscription) client.removeChannel(messageSubscription);
+
+      messageSubscription = client.channel(`private_chat_${currentUser}_${currentChatFriend}`)
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'private_messages' 
+        }, payload => {
+          const m = payload.new;
+          if ((m.sender === currentUser && m.receiver === currentChatFriend) || 
+              (m.sender === currentChatFriend && m.receiver === currentUser)) {
+            
+            const placeholder = chatBox.querySelector('div');
+            if (placeholder && placeholder.innerText.includes('ابدأ المحادثة')) {
+              chatBox.innerHTML = '';
+            }
+            
+            addMessageToScreen(m);
+          }
+        })
+        .subscribe();
+    }
+
+    function addMessageToScreen(msg) {
+      const isMe = msg.sender === currentUser;
+      const group = document.createElement('div');
+      group.className = `msg-group ${isMe ? 'me' : 'other'}`;
+      group.dataset.messageId = msg.id;
+      const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      group.innerHTML = `
+        <div class="message-actions">
+          <button onclick="reactToMessage(${msg.id}, '😂')">😂</button>
+          <button onclick="reactToMessage(${msg.id}, '🤍')">🤍</button>
+          <button onclick="reactToMessage(${msg.id}, '🔥')">🔥</button>
+          <button onclick="reactToMessage(${msg.id}, '👍')">👍</button>
+          <button class="reaction-more" onclick="toggleEmojiPicker(event, ${msg.id})">+</button>
+          ${isMe ? `<button onclick="deleteMessage(${msg.id})" title="مسح الرسالة"><i class="fa-solid fa-trash"></i></button>` : ''}
+        </div>
+
+        <div class="emoji-picker" id="emoji-picker-${msg.id}">
+          ${getEmojiList().map(e => `<button onclick="reactToMessage(${msg.id}, '${e}')">${e}</button>`).join('')}
+        </div>
+
+        <div class="bubble" onclick="toggleMessageActions(event, ${msg.id})">${escapeHtml(msg.content)}</div>
+        <span class="msg-time">${timeStr}</span>
+        <div class="reaction-badge" id="reactions-${msg.id}"></div>
+      `;
+
+      chatBox.appendChild(group);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      loadReactions(msg.id);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function toggleMessageActions(event, messageId) {
+      event.stopPropagation();
+
+      document.querySelectorAll('.msg-group.show-actions').forEach(el => {
+        if (el.dataset.messageId !== String(messageId)) {
+          el.classList.remove('show-actions');
+        }
+      });
+
+      const group = document.querySelector(`.msg-group[data-message-id="${messageId}"]`);
+      if (group) group.classList.toggle('show-actions');
+    }
+
+    function toggleEmojiPicker(event, messageId) {
+      event.stopPropagation();
+
+      const picker = document.getElementById(`emoji-picker-${messageId}`);
+      if (picker) picker.classList.toggle('show');
+    }
+
+    function getEmojiList() {
+      return [
+        '😀','😃','😄','😁','😆','😅','😂','🤣','😊','😍','🥰','😘',
+        '😎','🤔','😢','😭','😡','😱','🤯','😴','🤍','❤️','🧡','💛',
+        '💚','💙','💜','🖤','🤎','🔥','✨','💯','🎉','👏','🙏','👍',
+        '👎','👌','💪','🙌','🫶','💔','💖','💥','😮','🥳','🤩','😇',
+        '🤗','😏','🙄','🤝','👀','💀','🤡'
+      ];
+    }
+
+    async function reactToMessage(messageId, emoji) {
+      const client = getSupabase();
+      if (!client) return;
+
+      document.querySelectorAll('.msg-group.show-actions').forEach(el => {
+        el.classList.remove('show-actions');
+      });
+
+      document.querySelectorAll('.emoji-picker.show').forEach(el => {
+        el.classList.remove('show');
+      });
+
+      const { data: existing } = await client
+        .from('message_reactions')
+        .select('id,emoji')
+        .eq('message_id', messageId)
+        .eq('username', currentUser)
+        .maybeSingle();
+
+      if (existing) {
+        if (existing.emoji === emoji) {
+          await client
+            .from('message_reactions')
+            .delete()
+            .eq('id', existing.id);
+        } else {
+          await client
+            .from('message_reactions')
+            .update({ emoji })
+            .eq('id', existing.id);
+        }
+      } else {
+        await client
+          .from('message_reactions')
+          .insert([
+            {
+              message_id: messageId,
+              username: currentUser,
+              emoji
+            }
+          ]);
+      }
+
+      loadReactions(messageId);
+    }
+
+    async function loadReactions(messageId) {
+      const client = getSupabase();
+      if (!client) return;
+
+      const { data } = await client
+        .from('message_reactions')
+        .select('emoji')
+        .eq('message_id', messageId);
+
+      const box = document.getElementById(`reactions-${messageId}`);
+      if (!box) return;
+
+      const counts = {};
+
+      (data || []).forEach(r => {
+        counts[r.emoji] = (counts[r.emoji] || 0) + 1;
+      });
+
+      box.innerHTML = Object.entries(counts)
+        .map(([emoji, count]) => `<span>${emoji} ${count > 1 ? count : ''}</span>`)
+        .join('');
+    }
+
+    async function deleteMessage(messageId) {
+      if (!confirm('هل تريد مسح هذه الرسالة؟')) return;
+
+      const client = getSupabase();
+      if (!client) return;
+
+      const { error } = await client
+        .from('private_messages')
+        .delete()
+        .eq('id', messageId)
+        .eq('sender', currentUser);
+
+      if (error) {
+        alert('حدث خطأ أثناء مسح الرسالة: ' + error.message);
+        return;
+      }
+
+      const group = document.querySelector(
+        `.msg-group[data-message-id="${messageId}"]`
+      );
+
+      if (group) group.remove();
+    }
+
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.msg-group.show-actions').forEach(el => {
+        el.classList.remove('show-actions');
+      });
+
+      document.querySelectorAll('.emoji-picker.show').forEach(el => {
+        el.classList.remove('show');
+      });
+    });
+
+    // الحفاظ على خانة الكتابة ظاهرة عند فتح كيبورد الهاتف.
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+        if (chatScreen.classList.contains('active')) {
+          requestAnimationFrame(() => {
+            chatBox.scrollTop = chatBox.scrollHeight;
+          });
+        }
+      });
+    }
+
+    async function sendMessage() {
+      const text = msgInput.value.trim();
+
+      if (!text || !currentChatFriend) return;
+
+      msgInput.value = '';
+      toggleSendBtn();
+
+      const client = getSupabase();
+      if (!client) return;
+
+      await client
+        .from('private_messages')
+        .insert([
+          {
+            sender: currentUser,
+            receiver: currentChatFriend,
+            content: text
+          }
+        ]);
+    }
+
+    let messageLimitNotified = false;
+
+    function handleMessageInput() {
+      const length = msgInput.value.length;
+
+      if (length >= 9999) {
+        msgInput.value = msgInput.value.slice(0, 9999);
+
+        if (!messageLimitNotified) {
+          messageLimitNotified = true;
+          alert("This is your limit");
+        }
+      } else {
+        messageLimitNotified = false;
+      }
+
+      toggleSendBtn();
+    }
+
+    function toggleSendBtn() {
+      const sendBtn = document.getElementById('send-btn');
+      const icons = document.getElementById('input-icons');
+
+      if (msgInput.value.trim().length > 0) {
+        sendBtn.style.display = 'block';
+        icons.style.display = 'none';
+      } else {
+        sendBtn.style.display = 'none';
+        icons.style.display = 'flex';
+      }
+    }
+
+    function toggleTheme() {
+      const newTheme =
+        document.documentElement.getAttribute('data-theme') === 'crimson'
+          ? 'neon'
+          : 'crimson';
+
+      document.documentElement.setAttribute('data-theme', newTheme);
+
+      document.getElementById('theme-icon').className =
+        newTheme === 'neon'
+          ? 'fa-solid fa-moon'
+          : 'fa-solid fa-sun';
+    }
+  </script>
+</body>
+</html>
