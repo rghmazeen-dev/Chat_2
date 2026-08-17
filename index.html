@@ -88,7 +88,7 @@
     .input-wrapper input { flex: 1; background: transparent; border: none; color: #ffffff; font-size: 0.95rem; outline: none; }
     .input-icons { display: flex; align-items: center; gap: 14px; color: var(--text-muted); font-size: 1.15rem; }
     .send-btn { color: var(--accent-color); font-size: 1.3rem; cursor: pointer; display: none; padding: 4px; }
-    .theme-btn { background: transparent; border: none; color: var(--accent-color); font-size: 1.2rem; cursor: pointer; }
+    .theme-btn { background: transparent; border: none; color: var(--accent-color); font-size: 1.2rem; cursor: pointer; position: relative; }
   </style>
 </head>
 <body>
@@ -130,16 +130,35 @@
   <div id="home-screen" class="screen">
     <div class="header">
       <h3 id="welcome-text">المحادثات الخاصة / Private Chats</h3>
-      <button class="theme-btn" onclick="toggleTheme()"><i class="fa-solid fa-sun" id="theme-icon"></i></button>
+      <div style="display: flex; gap: 15px; align-items: center;">
+        <button class="theme-btn" onclick="openRequestsModal()" title="طلبات المحادثة">
+          <i class="fa-solid fa-bell"></i>
+          <span id="req-badge" style="display:none; background: #ef4444; color: white; border-radius: 50%; padding: 1px 5px; font-size: 9px; position: absolute; top: -5px; right: -8px;">0</span>
+        </button>
+        <button class="theme-btn" onclick="toggleTheme()"><i class="fa-solid fa-sun" id="theme-icon"></i></button>
+      </div>
     </div>
     <div class="search-bar">
       <input type="text" id="search-username" placeholder="ابحث عن صديق باليوزر نيم / Search user..." onkeypress="if(event.key==='Enter') startNewChat()">
-      <button onclick="startNewChat()"><i class="fa-solid fa-magnifying-glass"></i> بحث / Search</button>
+      <button onclick="startNewChat()"><i class="fa-solid fa-user-plus"></i> إرسال طلب</button>
     </div>
     <div class="chat-list" id="chat-list">
       <div class="empty-state">
         <i class="fa-regular fa-comments"></i>
-        <p>لا توجد محادثات بعد. ابحث عن صديق للبدء!<br>No chats yet. Search for a friend to start!</p>
+        <p>لا توجد محادثات بعد. ابحث عن صديق وأرسل له طلباً!<br>No chats yet. Search for a friend and send a request!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- شاشة طلبات المحادثة المنبثقة / Requests Modal -->
+  <div id="requests-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; align-items:center; justify-content:center; backdrop-filter: blur(5px);">
+    <div style="background:var(--card-bg); border:1px solid var(--glass-border); width:90%; max-width:400px; border-radius:20px; padding:20px; display:flex; flex-direction:column; max-height:80vh; box-shadow: var(--glow-effect);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--glass-border); padding-bottom:10px;">
+        <h3 style="font-size: 1.1rem;">طلبات المحادثة الواردة</h3>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; font-size:1.2rem; color:var(--text-muted);" onclick="closeRequestsModal()"></i>
+      </div>
+      <div id="requests-list" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px;">
+        <div style="text-align:center; color: var(--text-muted); padding: 20px;">جاري التحميل...</div>
       </div>
     </div>
   </div>
@@ -184,6 +203,7 @@
     let currentChatFriend = "";
     let messageSubscription = null;
     let userStatusSubscription = null;
+    let requestSubscription = null;
     let authStep = 'passcode'; 
 
     const authScreen = document.getElementById('auth-screen');
@@ -339,9 +359,9 @@
             
             startUsageHeartbeat();
             loadRecentChats();
+            loadIncomingRequests();
 
             if (userStatusSubscription) client.removeChannel(userStatusSubscription);
-            
             userStatusSubscription = client
               .channel(`ban_listener_${data.id}`)
               .on('postgres_changes', {
@@ -352,192 +372,4 @@
               }, payload => {
                 if (payload.new.status === 'rejected') {
                   alert("your account is banned !");
-                  window.location.reload();
-                }
-              })
-              .subscribe();
-          }
-
-        } else if (authStep === 'register') {
-          const userVal = document.getElementById('input-username').value.trim();
-          const passVal = document.getElementById('input-password').value.trim();
-
-          if (!userVal || !passVal) {
-            showError("يرجى ملء كافة الحقول / Please fill all fields!");
-            return;
-          }
-
-          const { error } = await client
-            .from('account_requests')
-            .insert([{ username: userVal, password: passVal, status: 'pending', usage_seconds: 0 }]);
-
-          if (error) {
-            showError(error.message || "حدث خطأ أثناء التسجيل / Registration error.");
-          } else {
-            alert("تم إرسال طلب التسجيل بنجاح! / Registration request sent successfully!");
-            switchToLogin();
-          }
-        }
-      } catch (err) {
-        console.error("Auth Exception:", err);
-        showError("حدث خطأ غير متوقع: " + err.message);
-      }
-    }
-
-    function goHome() {
-      chatScreen.classList.remove('active');
-      homeScreen.classList.add('active');
-      currentChatFriend = "";
-      if (messageSubscription && getSupabase()) {
-        getSupabase().removeChannel(messageSubscription);
-      }
-      loadRecentChats();
-    }
-
-    async function loadRecentChats() {
-      if (!currentUser) return;
-      const client = getSupabase();
-      if (!client) return;
-
-      const { data, error } = await client
-        .from('private_messages')
-        .select('*')
-        .or(`sender.eq.${currentUser},receiver.eq.${currentUser}`)
-         friends.forEach(friend => {
-        const div = document.createElement('div');
-        div.className = 'chat-item';
-        div.onclick = () => openChat(friend);
-        div.innerHTML = `
-          <div class="avatar">${friend.charAt(0).toUpperCase()}</div>
-          <div><h4>${friend}</h4></div>
-        `;
-        chatList.appendChild(div);
-      });
-    }
-
-    async function startNewChat() {
-      const searchInput = document.getElementById('search-username');
-      const friendName = searchInput.value.trim();
-      
-      if (!friendName) {
-        alert("يرجى كتابة اسم المستخدم للبحث!");
-        return;
-      }
-
-      if (friendName === currentUser) {
-        alert("لا يمكنك بدء محادثة مع نفسك!");
-        return;
-      }
-
-      const client = getSupabase();
-      if (!client) return;
-
-      const { data, error } = await client
-        .from('account_requests')
-        .select('username')
-        .eq('username', friendName)
-        .eq('status', 'approved')
-        .maybeSingle();
-
-      if (error || !data) {
-        alert("المستخدم غير موجود أو لم يتم قبول حسابه بعد!");
-        return;
-      }
-
-      searchInput.value = '';
-      openChat(friendName);
-    }
-
-    async function openChat(friendName) {
-      currentChatFriend = friendName;
-      document.getElementById('chat-with-name').innerText = currentChatFriend;
-      homeScreen.classList.remove('active');
-      chatScreen.classList.add('active');
-      chatBox.innerHTML = '';
-
-      const client = getSupabase();
-      if (!client) return;
-
-      const { data } = await client
-        .from('private_messages')
-        .select('*')
-        .or(`and(sender.eq.${currentUser},receiver.eq.${currentChatFriend}),and(sender.eq.${currentChatFriend},receiver.eq.${currentUser})`)
-        .order('created_at', { ascending: true });
-
-      if (data && data.length > 0) {
-        data.forEach(addMessageToScreen);
-      } else {
-        chatBox.innerHTML = `<div style="text-align:center; color: var(--text-muted); margin-top:20px;">ابدأ المحادثة الآن مع ${currentChatFriend}!</div>`;
-      }
-
-      if (messageSubscription) client.removeChannel(messageSubscription);
-
-      messageSubscription = client.channel(`private_chat_${currentUser}_${currentChatFriend}`)
-        .on('postgres_changes', { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'private_messages' 
-        }, payload => {
-          const m = payload.new;
-          if ((m.sender === currentUser && m.receiver === currentChatFriend) || 
-              (m.sender === currentChatFriend && m.receiver === currentUser)) {
-            
-            const placeholder = chatBox.querySelector('div');
-            if (placeholder && placeholder.innerText.includes('ابدأ المحادثة')) {
-              chatBox.innerHTML = '';
-            }
-            
-            addMessageToScreen(m);
-          }
-        })
-        .subscribe();
-    }
-
-    function addMessageToScreen(msg) {
-      const isMe = msg.sender === currentUser;
-      const group = document.createElement('div');
-      group.className = `msg-group ${isMe ? 'me' : 'other'}`;
-      
-      const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      group.innerHTML = `
-        <div class="bubble">${msg.content}</div>
-        <span class="msg-time">${timeStr}</span>
-      `;
-      chatBox.appendChild(group);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    async function sendMessage() {
-      const text = msgInput.value.trim();
-      if (!text || !currentChatFriend) return;
-      msgInput.value = '';
-      toggleSendBtn();
-
-      const client = getSupabase();
-      if (!client) return;
-
-      await client.from('private_messages').insert([
-        { sender: currentUser, receiver: currentChatFriend, content: text }
-      ]);
-    }
-
-    function toggleSendBtn() {
-      const sendBtn = document.getElementById('send-btn');
-      const icons = document.getElementById('input-icons');
-      if (msgInput.value.trim().length > 0) {
-        sendBtn.style.display = 'block';
-        icons.style.display = 'none';
-      } else {
-        sendBtn.style.display = 'none';
-        icons.style.display = 'flex';
-      }
-    }
-
-    function toggleTheme() {
-      const newTheme = document.documentElement.getAttribute('data-theme') === 'crimson' ? 'neon' : 'crimson';
-      document.documentElement.setAttribute('data-theme', newTheme);
-      document.getElementById('theme-icon').className = newTheme === 'neon' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
-    }
-  </script>
-</body>
-</html>
+ 
