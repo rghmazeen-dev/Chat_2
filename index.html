@@ -299,7 +299,302 @@
       const wrapPass = document.getElementById('wrap-password');
       const switchLink = document.getElementById('auth-switch-link');
       const loginLink = document.getElementById('auth-login-link');
-            friends.forEach(friend => {
+      const authTitle = document.getElementById('auth-title');
+      const authDesc = document.getElementById('auth-desc');
+      const authIcon = document.getElementById('auth-icon');
+      const authBtn = document.getElementById('auth-btn');
+
+      if (authStep === 'passcode') {
+        backBtn.style.display = "none";
+        wrapPasscode.style.display = "flex";
+        wrapUser.style.display = "none";
+        wrapPass.style.display = "none";
+        switchLink.style.display = "none";
+        loginLink.style.display = "none";
+        authIcon.className = "fa-solid fa-lock";
+        authTitle.innerText = "رمز الأمان / Security Code";
+        authDesc.innerText = "أدخل رمز الأمان للوصول إلى النظام / Enter passcode to access";
+        authBtn.innerText = "متابعة / Continue";
+      } else if (authStep === 'login') {
+        backBtn.style.display = "flex";
+        wrapPasscode.style.display = "none";
+        wrapUser.style.display = "flex";
+        wrapPass.style.display = "flex";
+        switchLink.style.display = "block";
+        loginLink.style.display = "none";
+        authIcon.className = "fa-solid fa-right-to-bracket";
+        authTitle.innerText = "تسجيل الدخول / Login";
+        authDesc.innerText = "أدخل اسم المستخدم وكلمة المرور / Enter username and password";
+        authBtn.innerText = "دخول / Sign In";
+      } else if (authStep === 'register') {
+        backBtn.style.display = "flex";
+        wrapPasscode.style.display = "none";
+        wrapUser.style.display = "flex";
+        wrapPass.style.display = "flex";
+        switchLink.style.display = "none";
+        loginLink.style.display = "block";
+        authIcon.className = "fa-solid fa-user-plus";
+        authTitle.innerText = "إنشاء حساب جديد / Register";
+        authDesc.innerText = "أدخل بيانات الحساب لإرسال الطلب / Enter details to request account";
+        authBtn.innerText = "إرسال الطلب / Submit Request";
+      }
+    }
+
+    function switchToRegister() { authStep = 'register'; updateAuthUI(); }
+    function switchToLogin() { authStep = 'login'; updateAuthUI(); }
+    function goBackToPasscode() {
+      authStep = 'passcode';
+      document.getElementById('input-passcode').value = '';
+      updateAuthUI();
+    }
+
+    function startUsageHeartbeat() {
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      heartbeatInterval = setInterval(async () => {
+        if (document.visibilityState === 'visible' && currentAccountData) {
+          const client = getSupabase();
+          if (!client) return;
+          const updatedSecs = (currentAccountData.usage_seconds || 0) + 5;
+          currentAccountData.usage_seconds = updatedSecs;
+
+          await client
+            .from('account_requests')
+            .update({ usage_seconds: updatedSecs })
+            .eq('id', currentAccountData.id);
+        }
+      }, 5000);
+    }
+
+    function updateChatUserStatus() {
+      const statusEl = document.getElementById('chat-user-status');
+      if (!statusEl || !currentChatFriend) return;
+
+      const isOnline = onlineUsers.has(currentChatFriend);
+      statusEl.classList.toggle('online', isOnline);
+      statusEl.classList.toggle('offline', !isOnline);
+
+      const textEl = statusEl.querySelector('.status-text');
+      if (textEl) textEl.innerText = isOnline ? 'متصل الآن' : 'غير متصل';
+    }
+
+    function refreshOnlineUsersFromPresence() {
+      if (!presenceChannel) return;
+      const state = presenceChannel.presenceState();
+      onlineUsers = new Set(Object.keys(state));
+      updateChatUserStatus();
+    }
+
+    async function startOnlinePresence() {
+      const client = getSupabase();
+      if (!client || !currentUser) return;
+
+      if (presenceChannel) {
+        try { await client.removeChannel(presenceChannel); } catch (e) {}
+        presenceChannel = null;
+      }
+
+      onlineUsers = new Set();
+      presenceChannel = client.channel('site-online-users', {
+        config: {
+          presence: { key: currentUser }
+        }
+      });
+
+      presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+          refreshOnlineUsersFromPresence();
+        })
+        .on('presence', { event: 'join' }, () => {
+          refreshOnlineUsersFromPresence();
+        })
+        .on('presence', { event: 'leave' }, () => {
+          refreshOnlineUsersFromPresence();
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await presenceChannel.track({
+              user: currentUser,
+              online_at: new Date().toISOString()
+            });
+          }
+        });
+    }
+
+    async function handleAuthAction() {
+      try {
+        hideError();
+        const client = getSupabase();
+        if (!client) {
+          showError("تعذر الاتصال بـ Supabase / Connection failed!");
+          return;
+        }
+
+        if (authStep === 'passcode') {
+          const passVal = document.getElementById('input-passcode').value.trim();
+          if (passVal === '2411712') {
+            switchToLogin();
+          } else {
+            showError("رمز الأمان غير صحيح / Invalid Security Code!");
+          }
+        } else if (authStep === 'login') {
+          const userVal = document.getElementById('input-username').value.trim();
+          const passVal = document.getElementById('input-password').value.trim();
+
+          if (!userVal || !passVal) {
+            showError("يرجى ملء كافة الحقول / Please fill all fields!");
+            return;
+          }
+
+          const { data, error } = await client
+            .from('account_requests')
+            .select('*')
+            .eq('username', userVal)
+            .eq('password', passVal)
+            .maybeSingle();
+
+          if (error) {
+            showError("حدث خطأ / Error: " + error.message);
+            return;
+          }
+
+          if (!data) {
+            showError("اسم المستخدم أو كلمة المرور غير صحيحة / Invalid credentials!");
+            return;
+          }
+
+          if (data.status === 'rejected') {
+            showError("your account is banned !");
+            return;
+          }
+
+          if (data.status === 'pending') {
+            showError("حسابك ما زال قيد الانتظار لم يتم قبوله بعد / Account request pending approval!");
+            return;
+          }
+
+          if (data.status === 'approved') {
+            currentUser = userVal;
+            currentAccountData = data;
+            document.getElementById('welcome-text').innerText = `مرحباً / Welcome, ${currentUser}`;
+            authScreen.classList.remove('active');
+            homeScreen.classList.add('active');
+            
+            startUsageHeartbeat();
+            startOnlinePresence();
+            loadRecentChats();
+            loadIncomingRequests();
+
+            if (userStatusSubscription) client.removeChannel(userStatusSubscription);
+            userStatusSubscription = client
+              .channel(`ban_listener_${data.id}`)
+              .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'account_requests',
+                filter: `id=eq.${data.id}`
+              }, payload => {
+                if (payload.new.status === 'rejected') {
+                  alert("your account is banned !");
+                  window.location.reload();
+                }
+              })
+              .subscribe();
+
+            if (requestSubscription) client.removeChannel(requestSubscription);
+            requestSubscription = client
+              .channel(`requests_listener_${currentUser}`)
+              .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'chat_requests',
+                filter: `receiver=eq.${currentUser}`
+              }, payload => {
+                loadIncomingRequests();
+              })
+              .subscribe();
+          }
+
+        } else if (authStep === 'register') {
+          const userVal = document.getElementById('input-username').value.trim();
+          const passVal = document.getElementById('input-password').value.trim();
+
+          if (!userVal || !passVal) {
+            showError("يرجى ملء كافة الحقول / Please fill all fields!");
+            return;
+          }
+
+          const { error } = await client
+            .from('account_requests')
+            .insert([{ username: userVal, password: passVal, status: 'pending', usage_seconds: 0 }]);
+
+          if (error) {
+            showError(error.message || "حدث خطأ أثناء التسجيل / Registration error.");
+          } else {
+            alert("تم إرسال طلب التسجيل بنجاح! / Registration request sent successfully!");
+            switchToLogin();
+          }
+        }
+      } catch (err) {
+        console.error("Auth Exception:", err);
+        showError("حدث خطأ غير متوقع: " + err.message);
+      }
+    }
+
+    function goHome() {
+      chatScreen.classList.remove('active');
+      homeScreen.classList.add('active');
+      currentChatFriend = "";
+      if (messageSubscription && getSupabase()) {
+        getSupabase().removeChannel(messageSubscription);
+      }
+      loadRecentChats();
+      loadIncomingRequests();
+    }
+
+    async function loadRecentChats() {
+      if (!currentUser) return;
+      const client = getSupabase();
+      if (!client) return;
+
+      let friends = new Set();
+
+      const { data: reqs } = await client
+        .from('chat_requests')
+        .select('*')
+        .eq('status', 'accepted')
+        .or(`sender.eq.${currentUser},receiver.eq.${currentUser}`);
+
+      if (reqs) {
+        reqs.forEach(req => {
+          if (req.sender !== currentUser) friends.add(req.sender);
+          if (req.receiver !== currentUser) friends.add(req.receiver);
+        });
+      }
+
+      const { data: msgs } = await client
+        .from('private_messages')
+        .select('*')
+        .or(`sender.eq.${currentUser},receiver.eq.${currentUser}`);
+
+      if (msgs) {
+        msgs.forEach(msg => {
+          if (msg.sender !== currentUser) friends.add(msg.sender);
+          if (msg.receiver !== currentUser) friends.add(msg.receiver);
+        });
+      }
+
+      chatList.innerHTML = '';
+      if (friends.size === 0) {
+        chatList.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-regular fa-comments"></i>
+            <p>لا توجد محادثات بعد. ابحث عن صديق وأرسل له طلباً!<br>No chats yet. Search for a friend and send a request!</p>
+          </div>
+        `;
+        return;
+      }
+
+      friends.forEach(friend => {
         const div = document.createElement('div');
         div.className = 'chat-item';
         div.onclick = () => openChat(friend);
@@ -472,7 +767,6 @@
         try { msgInput.focus({ preventScroll: true }); } catch (e) { msgInput.focus(); }
         try { msgInput.click(); } catch (e) {}
       });
-
       setTimeout(() => {
         if (chatScreen.classList.contains('active')) {
           try { msgInput.focus({ preventScroll: true }); } catch (e) { msgInput.focus(); }
@@ -533,16 +827,13 @@
           <button class="reaction-more" onclick="toggleEmojiPicker(event, ${msg.id})">+</button>
           ${isMe ? `<button onclick="deleteMessage(${msg.id})" title="مسح الرسالة"><i class="fa-solid fa-trash"></i></button>` : ''}
         </div>
-
         <div class="emoji-picker" id="emoji-picker-${msg.id}">
           ${getEmojiList().map(e => `<button onclick="reactToMessage(${msg.id}, '${e}')">${e}</button>`).join('')}
         </div>
-
         <div class="bubble" onclick="toggleMessageActions(event, ${msg.id})">${escapeHtml(msg.content)}</div>
         <span class="msg-time">${timeStr}</span>
         <div class="reaction-badge" id="reactions-${msg.id}"></div>
       `;
-
       chatBox.appendChild(group);
       chatBox.scrollTop = chatBox.scrollHeight;
       loadReactions(msg.id);
@@ -556,168 +847,91 @@
 
     function toggleMessageActions(event, messageId) {
       event.stopPropagation();
-
       document.querySelectorAll('.msg-group.show-actions').forEach(el => {
-        if (el.dataset.messageId !== String(messageId)) {
-          el.classList.remove('show-actions');
-        }
+        if (el.dataset.messageId !== String(messageId)) el.classList.remove('show-actions');
       });
-
       const group = document.querySelector(`.msg-group[data-message-id="${messageId}"]`);
       if (group) group.classList.toggle('show-actions');
     }
 
     function toggleEmojiPicker(event, messageId) {
       event.stopPropagation();
-
       const picker = document.getElementById(`emoji-picker-${messageId}`);
       if (picker) picker.classList.toggle('show');
     }
 
     function getEmojiList() {
-      return [
-        '😀','😃','😄','😁','😆','😅','😂','🤣','😊','😍','🥰','😘',
-        '😎','🤔','😢','😭','😡','😱','🤯','😴','🤍','❤️','🧡','💛',
-        '💚','💙','💜','🖤','🤎','🔥','✨','💯','🎉','👏','🙏','👍',
-        '👎','👌','💪','🙌','🫶','💔','💖','💥','😮','🥳','🤩','😇',
-        '🤗','😏','🙄','🤝','👀','💀','🤡'
-      ];
+      return ['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😍','🥰','😘','😎','🤔','😢','😭','😡','😱','🤯','😴','🤍','❤️','🧡','💛','💚','💙','💜','🖤','🤎','🔥','✨','💯','🎉','👏','🙏','👍','👎','👌','💪','🙌','🫶','💔','💖','💥','😮','🥳','🤩','😇','🤗','😏','🙄','😅','🤝','👀','💀','🤡'];
     }
 
     async function reactToMessage(messageId, emoji) {
       const client = getSupabase();
       if (!client) return;
+      document.querySelectorAll('.msg-group.show-actions').forEach(el => el.classList.remove('show-actions'));
+      document.querySelectorAll('.emoji-picker.show').forEach(el => el.classList.remove('show'));
 
-      document.querySelectorAll('.msg-group.show-actions').forEach(el => {
-        el.classList.remove('show-actions');
-      });
-
-      document.querySelectorAll('.emoji-picker.show').forEach(el => {
-        el.classList.remove('show');
-      });
-
-      const { data: existing } = await client
-        .from('message_reactions')
-        .select('id,emoji')
-        .eq('message_id', messageId)
-        .eq('username', currentUser)
-        .maybeSingle();
+      const { data: existing } = await client.from('message_reactions')
+        .select('id,emoji').eq('message_id', messageId).eq('username', currentUser).maybeSingle();
 
       if (existing) {
         if (existing.emoji === emoji) {
-          await client
-            .from('message_reactions')
-            .delete()
-            .eq('id', existing.id);
+          await client.from('message_reactions').delete().eq('id', existing.id);
         } else {
-          await client
-            .from('message_reactions')
-            .update({ emoji })
-            .eq('id', existing.id);
+          await client.from('message_reactions').update({ emoji }).eq('id', existing.id);
         }
       } else {
-        await client
-          .from('message_reactions')
-          .insert([
-            {
-              message_id: messageId,
-              username: currentUser,
-              emoji
-            }
-          ]);
+        await client.from('message_reactions').insert([{ message_id: messageId, username: currentUser, emoji }]);
       }
-
       loadReactions(messageId);
     }
 
     async function loadReactions(messageId) {
       const client = getSupabase();
       if (!client) return;
-
-      const { data } = await client
-        .from('message_reactions')
-        .select('emoji')
-        .eq('message_id', messageId);
-
+      const { data } = await client.from('message_reactions').select('emoji').eq('message_id', messageId);
       const box = document.getElementById(`reactions-${messageId}`);
       if (!box) return;
-
       const counts = {};
-
-      (data || []).forEach(r => {
-        counts[r.emoji] = (counts[r.emoji] || 0) + 1;
-      });
-
-      box.innerHTML = Object.entries(counts)
-        .map(([emoji, count]) => `<span>${emoji} ${count > 1 ? count : ''}</span>`)
-        .join('');
+      (data || []).forEach(r => counts[r.emoji] = (counts[r.emoji] || 0) + 1);
+      box.innerHTML = Object.entries(counts).map(([emoji,count]) => `<span>${emoji} ${count > 1 ? count : ''}</span>`).join('');
     }
 
     async function deleteMessage(messageId) {
       if (!confirm('هل تريد مسح هذه الرسالة؟')) return;
-
       const client = getSupabase();
       if (!client) return;
-
-      const { error } = await client
-        .from('private_messages')
-        .delete()
-        .eq('id', messageId)
-        .eq('sender', currentUser);
-
-      if (error) {
-        alert('حدث خطأ أثناء مسح الرسالة: ' + error.message);
-        return;
-      }
-
-      const group = document.querySelector(
-        `.msg-group[data-message-id="${messageId}"]`
-      );
-
+      const { error } = await client.from('private_messages').delete().eq('id', messageId).eq('sender', currentUser);
+      if (error) { alert('حدث خطأ أثناء مسح الرسالة: ' + error.message); return; }
+      const group = document.querySelector(`.msg-group[data-message-id="${messageId}"]`);
       if (group) group.remove();
     }
 
     document.addEventListener('click', () => {
-      document.querySelectorAll('.msg-group.show-actions').forEach(el => {
-        el.classList.remove('show-actions');
-      });
-
-      document.querySelectorAll('.emoji-picker.show').forEach(el => {
-        el.classList.remove('show');
-      });
+      document.querySelectorAll('.msg-group.show-actions').forEach(el => el.classList.remove('show-actions'));
+      document.querySelectorAll('.emoji-picker.show').forEach(el => el.classList.remove('show'));
     });
 
     // الحفاظ على خانة الكتابة ظاهرة عند فتح كيبورد الهاتف.
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
         if (chatScreen.classList.contains('active')) {
-          requestAnimationFrame(() => {
-            chatBox.scrollTop = chatBox.scrollHeight;
-          });
+          requestAnimationFrame(() => { chatBox.scrollTop = chatBox.scrollHeight; });
         }
       });
     }
 
     async function sendMessage() {
       const text = msgInput.value.trim();
-
       if (!text || !currentChatFriend) return;
-
       msgInput.value = '';
       toggleSendBtn();
 
       const client = getSupabase();
       if (!client) return;
 
-      await client
-        .from('private_messages')
-        .insert([
-          {
-            sender: currentUser,
-            receiver: currentChatFriend,
-            content: text
-          }
-        ]);
+      await client.from('private_messages').insert([
+        { sender: currentUser, receiver: currentChatFriend, content: text }
+      ]);
     }
 
     let messageLimitNotified = false;
@@ -727,7 +941,6 @@
 
       if (length >= 9999) {
         msgInput.value = msgInput.value.slice(0, 9999);
-
         if (!messageLimitNotified) {
           messageLimitNotified = true;
           alert("This is your limit");
@@ -742,7 +955,6 @@
     function toggleSendBtn() {
       const sendBtn = document.getElementById('send-btn');
       const icons = document.getElementById('input-icons');
-
       if (msgInput.value.trim().length > 0) {
         sendBtn.style.display = 'block';
         icons.style.display = 'none';
@@ -753,18 +965,11 @@
     }
 
     function toggleTheme() {
-      const newTheme =
-        document.documentElement.getAttribute('data-theme') === 'crimson'
-          ? 'neon'
-          : 'crimson';
-
+      const newTheme = document.documentElement.getAttribute('data-theme') === 'crimson' ? 'neon' : 'crimson';
       document.documentElement.setAttribute('data-theme', newTheme);
-
-      document.getElementById('theme-icon').className =
-        newTheme === 'neon'
-          ? 'fa-solid fa-moon'
-          : 'fa-solid fa-sun';
+      document.getElementById('theme-icon').className = newTheme === 'neon' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
     }
   </script>
 </body>
 </html>
+
